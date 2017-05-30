@@ -7,6 +7,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.sql.Timestamp;
+
+import com.itpro.airtimedata.charging.main.Config;
 import com.itpro.airtimedata.charging.structs.ChargingCmd;
 import com.itpro.log4j.ITProLog4jCategory;
 import com.itpro.util.ProcessingThread;
@@ -50,9 +52,11 @@ public class ChargingSession extends ProcessingThread {
 	@Override
 	protected void process() {
 		// TODO Auto-generated method stub
-		logInfo("Req ChargingCmd: msisdn:"+chargingCmd.offerRecord.msisdn);
+		logInfo("Req "+chargingCmd);
 		
-		String cmd = "/opt/itpro/airTimeData/scripts/chargeFee.php " + chargingCmd.offerRecord.msisdn + " "+ chargingCmd.chargeValue;
+		String cmd = "/opt/itpro/airTime/airTimeCharging/scripts/chargeFee.php "
+		        +Config.charging_spID+" "+ Config.charging_spPassword+" "+ Config.charging_serviceID+" "
+		        + chargingCmd.offerRecord.msisdn + " "+ chargingCmd.chargeValue+" "+chargingCmd.transactionID;
 
 		Runtime run = Runtime.getRuntime();
 		Process pr = null;
@@ -90,11 +94,10 @@ public class ChargingSession extends ProcessingThread {
 			buf.close();
 			//logInfo("getSubInfo(" + msisdn + "):" + result);
 			String[] arrResult = result.split("[|]");
-			if(arrResult.length==2){
+			if(arrResult.length>=2){
 				chargingCmd.charge_date = new Timestamp(System.currentTimeMillis());
 				chargingCmd.resultCode = Integer.parseInt(arrResult[0]);
 				chargingCmd.resultString = arrResult[1];
-				chargingCmd.offerRecord.charge_date = new Timestamp(System.currentTimeMillis());
 				queueResp.enqueue(chargingCmd);
 				logInfo("Resp "+chargingCmd.toString());
 				stop();
@@ -104,7 +107,6 @@ public class ChargingSession extends ProcessingThread {
 				chargingCmd.charge_date = new Timestamp(System.currentTimeMillis());
 				chargingCmd.resultCode = -3;
 				chargingCmd.resultString = "Invalid ChargeFee result format";
-				chargingCmd.offerRecord.charge_date = new Timestamp(System.currentTimeMillis());
 				queueResp.enqueue(chargingCmd);
 				logInfo("Resp "+chargingCmd.toString());
 				stop();
@@ -115,7 +117,6 @@ public class ChargingSession extends ProcessingThread {
 			chargingCmd.charge_date = new Timestamp(System.currentTimeMillis());
 			chargingCmd.resultCode = -3;
 			chargingCmd.resultString = e.getMessage();
-			chargingCmd.offerRecord.charge_date = new Timestamp(System.currentTimeMillis());
 			queueResp.enqueue(chargingCmd);
 			logInfo("Resp "+chargingCmd.toString());
 			stop();

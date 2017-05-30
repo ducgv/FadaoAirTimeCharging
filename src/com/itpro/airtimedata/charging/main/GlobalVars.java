@@ -11,6 +11,7 @@ import com.itpro.airtimedata.charging.process.SmsMTTableAccess;
 import com.itpro.airtimedata.charging.process.TerminatedEventProcess;
 import com.itpro.log4j.ITProLog4j;
 import com.itpro.log4j.ITProLog4jCategory;
+import com.itpro.paymentgw.PaymentGWInterface;
 
 /**
  * @author Giap Van Duc
@@ -37,6 +38,7 @@ public class GlobalVars {
 	public static ChargingProcess chargingProcess = new ChargingProcess();
 	public static CDRTableAccess cdrTableAccess = new CDRTableAccess();
 	public static TerminatedEventProcess terminatedEventProcess = new TerminatedEventProcess();
+	public static PaymentGWInterface paymentGWInterface=new PaymentGWInterface();
 	public static boolean stopModuleFlag = false;
 	public static boolean isChargingError = false;
 	public static long lastTimeChargingError;

@@ -22,7 +22,7 @@ public class UpdateOfferRecordCmd {
 		String str = "UpdateOfferCmd:"
 				+ " msisdn:"+offerRecord.msisdn
 				+ " offer_id:"+offerRecord.offer_id
-				+ " charge_date:"+offerRecord.charge_date
+				+ " last_charge_date:"+offerRecord.last_charge_date
 				+ "; charge_status:"+offerRecord.charge_status;
 		return str;
 	}

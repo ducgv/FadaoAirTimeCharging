@@ -60,7 +60,19 @@ public class DbConnection extends MySQLConnection {
 		}
 		return true;
 	}
-	
+   public int getChargingTransactionId() throws SQLException{
+        PreparedStatement ps=connection.prepareStatement(
+        "select next_seq('pw_charging_trans_id') as transaction_id");
+        ps.execute();
+        ResultSet rs = ps.getResultSet();
+        int result = 0;
+        if(rs.next()) {
+            result = rs.getInt(1);
+        }
+        rs.close();
+        ps.close();
+        return result;
+    }
 	public void insertSmsMtRecord(MTRecord mtRecord) throws SQLException{
 		PreparedStatement ps = null;		
 		ps=connection.prepareStatement("INSERT INTO sms_mt (sms_type,msisdn,content, offer_id) VALUES (?,?,?,?)");
@@ -75,12 +87,11 @@ public class DbConnection extends MySQLConnection {
 	public void updateOfferRecord(OfferRecord offerRecordUpdate) throws SQLException {
 		// TODO Auto-generated method stub
 		PreparedStatement ps = null;
-		ps=connection.prepareStatement("UPDATE offers SET charge_status = ?, charge_date =?, charge_result_code=?, charge_result_string=? WHERE offer_id=?");
+		ps=connection.prepareStatement("UPDATE offers SET charge_status = ?, last_charge_date =?, paid_value=? WHERE offer_id=?");
 		ps.setInt(1, offerRecordUpdate.charge_status);
-		ps.setTimestamp(2, offerRecordUpdate.charge_date);
-		ps.setInt(3, offerRecordUpdate.charge_result_code);
-		ps.setString(4, offerRecordUpdate.charge_result_string);
-		ps.setInt(5, offerRecordUpdate.offer_id);
+		ps.setTimestamp(2, offerRecordUpdate.last_charge_date);
+	    ps.setInt(3, offerRecordUpdate.paid_value);
+		ps.setInt(4, offerRecordUpdate.offer_id);
 		ps.execute();
 		ps.close();
 	}
@@ -116,13 +127,35 @@ public class DbConnection extends MySQLConnection {
 		}			
 		return rechargeEventRecords;
 	}
-
+    public void getListOfferRecord(Vector<OfferRecord> offerRecords) throws SQLException {
+        // TODO Auto-generated method stub
+        PreparedStatement ps=connection.prepareStatement("call get_list_offer_record()");
+        ps.execute();
+        ResultSet rs = ps.getResultSet();
+        while(rs.next()) {
+            OfferRecord offerRecord = new OfferRecord();
+            offerRecord.offer_id = rs.getInt("offer_id");
+            offerRecord.offer_type = rs.getInt("offer_type");
+            offerRecord.msisdn = rs.getString("msisdn");
+            offerRecord.req_date = rs.getTimestamp("req_date");
+            offerRecord.package_name = rs.getString("package_name");
+            offerRecord.paid_value=rs.getInt("paid_value");
+            offerRecord.package_value = rs.getInt("package_value");
+            offerRecord.package_service_fee = rs.getInt("package_service_fee");
+            offerRecord.last_charge_date = rs.getTimestamp("last_charge_date");
+            offerRecords.add(offerRecord);
+        }
+        rs.close();
+        ps.close(); 
+    }
+	
+	
 	public OfferRecord getUnPaidOfferRecord(String msisdn) throws SQLException {
 		// TODO Auto-generated method stub
 		OfferRecord offerRecord = null;
 		PreparedStatement ps=connection.prepareStatement(
-				"select offer_id,offer_type,msisdn,sub_product_code,sub_id,req_date,package_name,package_data_amount,package_price,"
-						+ "package_service_fee FROM offers WHERE msisdn = ? AND status =? AND charge_status = 0");
+				"select offer_id,offer_type,msisdn,req_date,package_name,package_value,paid_value,"
+						+ "package_service_fee,last_charge_date FROM offers WHERE msisdn = ? AND status =? AND (charge_status = 0 or charge_status = 1)");
 		ps.setString(1, msisdn);
 		ps.setInt(2, OfferRecord.OFFER_STATUS_SUCCESS);
 		ps.execute();
@@ -133,13 +166,12 @@ public class DbConnection extends MySQLConnection {
 			offerRecord.offer_id = rs.getInt("offer_id");
 			offerRecord.offer_type = rs.getInt("offer_type");
 			offerRecord.msisdn = rs.getString("msisdn");
-			offerRecord.sub_product_code = rs.getString("sub_product_code");
-			offerRecord.sub_id = rs.getInt("sub_id");
 			offerRecord.req_date = rs.getTimestamp("req_date");
 			offerRecord.package_name = rs.getString("package_name");
-			offerRecord.package_data_amount = rs.getInt("package_data_amount");
-			offerRecord.package_price = rs.getInt("package_price");
+			offerRecord.paid_value=rs.getInt("paid_value");
+			offerRecord.package_value = rs.getInt("package_value");
 			offerRecord.package_service_fee = rs.getInt("package_service_fee");
+			offerRecord.last_charge_date = rs.getTimestamp("last_charge_date");
 			return offerRecord;
 		}
 		rs.close();
@@ -150,22 +182,24 @@ public class DbConnection extends MySQLConnection {
 	public void insertCDRRecord(CDRRecord cdrRecord) throws SQLException {
 		// TODO Auto-generated method stub
 		PreparedStatement ps = null;
-		String sql = "INSERT INTO cdr(date_time,msisdn,sub_product_code,sub_id,offer_id,offer_type,package_name,package_price,"
-				+ "service_fee,charge_value,result_code,result_string,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
+		String sql = "INSERT INTO cdr(date_time,msisdn,offer_id,offer_type,package_name,package_value,"
+				+ "service_fee,charge_value,result_code,result_string,status,transactionID,spID,serviceID,paid_value_before) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 		ps=connection.prepareStatement(sql);
 		ps.setTimestamp(1,cdrRecord.date_time);
 		ps.setString(2,cdrRecord.msisdn);
-		ps.setString(3,cdrRecord.sub_product_code);
-		ps.setInt(4,cdrRecord.sub_id);
-		ps.setInt(5,cdrRecord.offer_id);
-		ps.setInt(6,cdrRecord.offer_type);
-		ps.setString(7,cdrRecord.package_name);
-		ps.setInt(8,cdrRecord.package_price);
-		ps.setInt(9,cdrRecord.service_fee);
-		ps.setInt(10,cdrRecord.charge_value);
-		ps.setInt(11,cdrRecord.result_code);
-		ps.setString(12,cdrRecord.result_string);
-		ps.setInt(13,cdrRecord.status);	
+		ps.setInt(3,cdrRecord.offer_id);
+		ps.setInt(4,cdrRecord.offer_type);
+		ps.setString(5,cdrRecord.package_name);
+		ps.setInt(6,cdrRecord.package_value);
+		ps.setInt(7,cdrRecord.service_fee);
+		ps.setInt(8,cdrRecord.charge_value);
+		ps.setInt(9,cdrRecord.result_code);
+		ps.setString(10,cdrRecord.result_string);
+		ps.setInt(11,cdrRecord.status);	
+		ps.setInt(12,cdrRecord.transactionID);
+		ps.setString(13,cdrRecord.spID);
+		ps.setString(14,cdrRecord.serviceID);
+		ps.setInt(15,cdrRecord.paid_value_before);
 		ps.execute();
 		ps.close();
 	}

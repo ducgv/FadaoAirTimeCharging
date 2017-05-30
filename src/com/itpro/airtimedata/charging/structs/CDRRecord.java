@@ -14,27 +14,31 @@ public class CDRRecord {
 	public static final int CHARGE_FAILED = 3;
 	public Timestamp date_time;
 	public String msisdn;
-	public String sub_product_code;
-	public int sub_id;
 	public int offer_id;
 	public int offer_type;
 	public String package_name;
-	public int package_price;
+	public int package_value;
 	public int service_fee;
 	public int charge_value;
+	public int paid_value_before;
 	public int result_code;
 	public String result_string;
 	public int status;
+	public String spID;
+	public int transactionID;
+	public String serviceID;
 	public String toString(){
 		String str= "CDRRecord: "
 				+ "msisdn:"+msisdn
-				+ "; sub_product_code:"+sub_product_code
-				+ "; sub_id:"+sub_id
+				+ "; spID:"+spID
+				+ "; transactionID:"+transactionID
+				+ "; serviceID:"+serviceID
 				+ "; date_time:"+date_time
 				+ "; offer_id:"+offer_id
 				+ "; offer_type:"+offer_type
 				+ "; package_name:"+package_name
-				+ "; package_price:"+package_price
+				+ "; package_value:"+package_value
+				+ "; paid_value_before:"+paid_value_before
 				+ "; service_fee:"+service_fee
 				+ "; charge_value:"+charge_value
 				+ "; result_code:"+result_code

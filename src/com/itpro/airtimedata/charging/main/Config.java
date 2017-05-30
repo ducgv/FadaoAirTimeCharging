@@ -3,6 +3,7 @@
  */
 package com.itpro.airtimedata.charging.main;
 
+
 import com.itpro.util.Params;
 
 /**
@@ -33,5 +34,11 @@ public class Config {
 	public static Params	serviceConfigs = new Params();
 	public static int maxChargingConcurrent;
 	public static int maxChargingTPS;
-	
+	   //PaymentGW
+    public static String    profileSubScriber_spID;
+    public static String    profileSubScriber_spPassword;
+    // charging
+    public static String    charging_spID;
+    public static String    charging_serviceID;
+    public static String    charging_spPassword;
 }

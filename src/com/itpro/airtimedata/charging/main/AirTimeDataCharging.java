@@ -32,7 +32,7 @@ public class AirTimeDataCharging {
 		if(General.getPlatform()==General.PLATFORM_WINDOW)
 			Config.homePath = "C:\\itpro\\airTimeData\\airTimeDataCharging\\";
 		else
-			Config.homePath = "/opt/itpro/airTimeData/airTimeDataCharging/";
+			Config.homePath = "/opt/itpro/airTime/airTimeCharging/";
 		
 		GlobalVars.logManager = new ITProLog4j();
 		GlobalVars.logManager.Initialize(Config.homePath+"config"+General.filePathSeparator+Config.logConfigFileName,Config.homePath+"log"+Config.homePath+"config"+General.filePathSeparator);
@@ -75,9 +75,12 @@ public class AirTimeDataCharging {
 		GlobalVars.chargingProcess.setLogger(GlobalVars.logger);		
 		GlobalVars.chargingProcess.start();
 		
-		GlobalVars.terminatedEventProcess.setLogPrefix("[TerminatedEvent] ");
-		GlobalVars.terminatedEventProcess.setLogger(GlobalVars.logger);		
-		GlobalVars.terminatedEventProcess.start();
+//		GlobalVars.terminatedEventProcess.setLogPrefix("[TerminatedEvent] ");
+//		GlobalVars.terminatedEventProcess.setLogger(GlobalVars.logger);		
+//		GlobalVars.terminatedEventProcess.start();
+	    GlobalVars.paymentGWInterface.setLogPrefix("[paymentGWInterface] ");
+		GlobalVars.paymentGWInterface.setLogger(GlobalVars.logger);
+		GlobalVars.paymentGWInterface.start();
 		
 		GlobalVars.airTimeDataChargingCli.setLogger(GlobalVars.logger);
 		GlobalVars.airTimeDataChargingCli.setLogPrefix("[CLI] ");
@@ -91,18 +94,26 @@ public class AirTimeDataCharging {
 	public void loadConfig() {
 		CfgReader cfgReader = new CfgReader();
 		String file = Config.homePath+"config"+General.filePathSeparator+Config.sysConfigFileName;
-		cfgReader.load(file);
+		cfgReader.load(file,";");
 		
 		cfgReader.setGroup("CLI");
 		Config.cliListenPort = cfgReader.getInt("ListenPort", 1443);		
 		Config.cliRequestTimeout = cfgReader.getInt("RequestTimeout", 60);
 		
 		cfgReader.setGroup("DB");
-		Config.dbServerName = cfgReader.getString("ServerIpAddr", "10.120.41.103");
-		Config.dbDatabaseName = cfgReader.getString("DbName", "airtime_data");
-		Config.dbUserName = cfgReader.getString("UserName", "dataadvance");;
-		Config.dbPassword = cfgReader.getString("Password", "khongbiet@dataadvance");
+		Config.dbServerName = cfgReader.getString("ServerIpAddr", "10.10.1.58");
+		Config.dbDatabaseName = cfgReader.getString("DbName", "airtime");
+		Config.dbUserName = cfgReader.getString("UserName", "airtime");;
+		Config.dbPassword = cfgReader.getString("Password", "airtime!@#itpro2017");
 		
+		cfgReader.setGroup("payment gw");
+		  
+		Config.profileSubScriber_spID=cfgReader.getString("profileSubScriber_spID", "1000117480");
+		Config.profileSubScriber_spPassword=cfgReader.getString("profileSubScriber_spPassword", "fadaoAASS@ADVetl");
+	    
+		Config.charging_spID=cfgReader.getString("charging_spID", "1000117481");
+		Config.charging_spPassword=cfgReader.getString("charging_spPassword", "fadaoAASS@ADVetl");
+		Config.charging_serviceID=cfgReader.getString("charging_serviceID", "33334");
 		if(cfgReader.isChanged())
 			cfgReader.save(file);
 		

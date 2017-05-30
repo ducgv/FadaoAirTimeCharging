@@ -146,10 +146,10 @@ public class TerminatedEventProcess extends ProcessingThread {
 			OfferRecord offerRecord = connection.getUnPaidOfferRecord(terminatedEvent.msisdn);
 			if(offerRecord!=null){
 				listTerminatedEventProcessing.put(terminatedEvent.msisdn, terminatedEvent);
-				offerRecord.charge_date = new Timestamp(System.currentTimeMillis());
+				offerRecord.last_charge_date = new Timestamp(System.currentTimeMillis());
 				offerRecord.charge_status = OfferRecord.OFFER_CHARGE_STATUS_BAD_DEBIT;
-				offerRecord.charge_result_code = 0;
-				offerRecord.charge_result_string = "Terminated Event, date:"+terminatedEvent.date_time.toString();
+				//offerRecord.charge_result_code = 0;
+				//offerRecord.charge_result_string = "Terminated Event, date:"+terminatedEvent.date_time.toString();
 				UpdateOfferRecordCmd updateOfferCmd = new UpdateOfferRecordCmd(offerRecord, queueUpdateOfferRecordResp);
 				updateOfferRecord(updateOfferCmd);
 				logInfo(offerRecord.toString());

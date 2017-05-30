@@ -24,6 +24,7 @@ import com.itpro.airtimedata.charging.structs.SubInfo;
 import com.itpro.airtimedata.charging.structs.UpdateOfferRecordCmd;
 import com.itpro.airtimedata.charging.util.DataPackageDisplay;
 import com.itpro.cli.CmdRequest;
+import com.itpro.paymentgw.cmd.GetSubInfoCmd;
 import com.itpro.util.Params;
 import com.itpro.util.ProcessingThread;
 import com.itpro.util.Queue;
@@ -36,8 +37,10 @@ public class ChargingProcess extends ProcessingThread {
 	DbConnection connection = null;
 	public boolean isConnected = false;
 	private long nextTimeGetRechargeEvents = System.currentTimeMillis();
+	private long nextTimeGetOfferRecords = System.currentTimeMillis();
 	public Queue queueCmdCLIRequest = new Queue();
 	Vector<RechargeEventRecord> rechargeEventRecords = new Vector<RechargeEventRecord>();
+	Vector<OfferRecord> offerRecords = new Vector<OfferRecord>();
 	Hashtable<String, ChargingCmd> listChargeCmdProcessing = new Hashtable<String, ChargingCmd>();
 	private long lastTime;	
 	public static boolean isExceed = false;
@@ -180,9 +183,23 @@ public class ChargingProcess extends ProcessingThread {
 							offerRecord.rechargeEventRecord = rechargeEventRecord;
 							offerRecord.rechargeEventRecord.status = 3; //default
 							if(listRequestProcessing.get(msisdn)==null){
-								listRequestProcessing.put(msisdn, offerRecord);
-								GetSubInfoSession getSubInfoSession = new GetSubInfoSession(msisdn, queueGetSubInfoResp , logger);
-								getSubInfoSession.start();
+							    listRequestProcessing.put(msisdn, offerRecord);
+							    if( rechargeEventRecord.recharge_value==0){ // recharge value=0 mean this is new active sub. So we'll move old offer to bad debit
+					                processNewActiveSubs(offerRecord);
+							    }else{
+    								GetSubInfoCmd getSubInfoCmd=new GetSubInfoCmd();
+    				                getSubInfoCmd.msisdn = msisdn;
+    				                getSubInfoCmd.transactionId = connection.getChargingTransactionId();
+    				                getSubInfoCmd.reqDate = new Date(System.currentTimeMillis());
+    				               // getSubInfoCmd.rechargeMsisdn = batchRechargeCmd.currentBatchRechargeElement.recharge_msisdn;
+    				                getSubInfoCmd.token = GlobalVars.paymentGWInterface.CURRENT_TOKEN;
+    				                getSubInfoCmd.queueResp = queueGetSubInfoResp;
+    				                logInfo(getSubInfoCmd.getReqString());
+    				                GlobalVars.paymentGWInterface.queueUserRequest.enqueue(getSubInfoCmd);
+    //				                
+    //								GetSubInfoSession getSubInfoSession = new GetSubInfoSession(msisdn, queueGetSubInfoResp , logger);
+    //								getSubInfoSession.start();
+							    }
 							}
 							else{
 								rechargeEventRecord.status = 3;
@@ -204,12 +221,44 @@ public class ChargingProcess extends ProcessingThread {
 
 				}
 				else{
+				    logInfo("Already processing for msisd from "+rechargeEventRecord);
 					rechargeEventRecord.status = 3;
 					finishProcessRechargeEventRecord(rechargeEventRecord);
 				}
 			}
 		}
-		
+		//process charge off after 48h
+		getOfferRecords();
+		if (!offerRecords.isEmpty() && !isExceed){     
+            if (concurrent < Config.maxChargingConcurrent) {
+                OfferRecord offerRecord=offerRecords.remove(0);
+                if(listChargeCmdProcessing.get(offerRecord.msisdn)==null){
+                    if(listRequestProcessing.get(offerRecord.msisdn)==null){
+                        listRequestProcessing.put(offerRecord.msisdn, offerRecord);
+                        GetSubInfoCmd getSubInfoCmd=new GetSubInfoCmd();
+                        getSubInfoCmd.msisdn = offerRecord.msisdn;
+                        try {
+                            getSubInfoCmd.transactionId = connection.getChargingTransactionId();
+                            getSubInfoCmd.reqDate = new Date(System.currentTimeMillis());
+                            // getSubInfoCmd.rechargeMsisdn = batchRechargeCmd.currentBatchRechargeElement.recharge_msisdn;
+                             getSubInfoCmd.token = GlobalVars.paymentGWInterface.CURRENT_TOKEN;
+                             getSubInfoCmd.queueResp = queueGetSubInfoResp;
+                             logInfo(getSubInfoCmd.getReqString());
+                             GlobalVars.paymentGWInterface.queueUserRequest.enqueue(getSubInfoCmd);
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                            logError("process->getChargingTransactionId error:"+ e.getMessage());
+                        }
+
+                    }else{
+                        logInfo("Offer is already processing:"+ offerRecord);
+                    }
+                }else{
+                    logInfo("Offer is already charging:"+ offerRecord);
+                }
+            }
+		}
+		//
 		ChargingCmd chargingCmdResp = (ChargingCmd) queueChargingCmdResp.dequeue();
 		if(chargingCmdResp!=null){
 			OnChargingCmdResp(chargingCmdResp);
@@ -222,46 +271,95 @@ public class ChargingProcess extends ProcessingThread {
 		if(insertCDRCmdResp!=null){
 			OnInsertCDRCmdResp(insertCDRCmdResp);
 		}
-		SubInfo subInfoResp = (SubInfo) queueGetSubInfoResp.dequeue();
-		if(subInfoResp!=null){
-			OnGetSubInfoResp(subInfoResp);
+		GetSubInfoCmd getSubInfoCmdRep = (GetSubInfoCmd) queueGetSubInfoResp.dequeue();
+		if(getSubInfoCmdRep!=null){
+			OnGetSubInfoResp(getSubInfoCmdRep);
 		}
 	}
 
+    private void processNewActiveSubs(OfferRecord offerRecord) {
+        offerRecord.charge_status = OfferRecord.OFFER_CHARGE_STATUS_BAD_DEBIT;
+        UpdateOfferRecordCmd updateOfferCmd = new UpdateOfferRecordCmd(offerRecord, queueUpdateOfferRecordResp);
+        updateOfferRecord(updateOfferCmd);
+        
+        
+        ChargingCmd chargingCmd = new ChargingCmd(offerRecord);
+        chargingCmd.chargeValue=0;
+        chargingCmd.transactionID=0;
+        chargingCmd.spID=Config.profileSubScriber_spID;
+        chargingCmd.serviceID=Config.charging_serviceID;
+        chargingCmd.charge_date=new Timestamp(System.currentTimeMillis());
+        chargingCmd.resultCode=155;
+        chargingCmd.resultString="The subscriber is new active SIM.";
+        listChargeCmdProcessing.put(offerRecord.msisdn, chargingCmd);
+        queueChargingCmdResp.enqueue(chargingCmd);
+    }
 
-	private void OnGetSubInfoResp(SubInfo subInfoResp) {
+
+	private void OnGetSubInfoResp(GetSubInfoCmd getSubInfoCmdRep) {
 		// TODO Auto-generated method stub
-		OfferRecord offerRecord = listRequestProcessing.get(subInfoResp.msisdn);
-		if(subInfoResp.respCode == 11 || subInfoResp.respCode == 22){
-			if(offerRecord.sub_id!=subInfoResp.subId){
-				offerRecord.charge_date = new Timestamp(System.currentTimeMillis());
-				offerRecord.charge_status = OfferRecord.OFFER_CHARGE_STATUS_BAD_DEBIT;
-				offerRecord.charge_result_code = subInfoResp.subId;
-				offerRecord.charge_result_string = "The subscriber has changed sub_id";
-				UpdateOfferRecordCmd updateOfferCmd = new UpdateOfferRecordCmd(offerRecord, queueUpdateOfferRecordResp);
-				updateOfferRecord(updateOfferCmd);
-			}
-			else{
+		OfferRecord offerRecord = listRequestProcessing.get(getSubInfoCmdRep.msisdn);
+		if( getSubInfoCmdRep!=null){ // check get subinfo ok
+		    int subBalance=200000; // got balance from getsubInfo
+		    if(subBalance > 0 ){
+    		    int feeCharge=offerRecord.package_value+offerRecord.package_service_fee;
+    		    int chargeValue=feeCharge-offerRecord.paid_value;
+    		    if( chargeValue <=0){
+    		        logError("OnGetSubInfoResp "+offerRecord+". The chargeValue="+chargeValue +" should not charge anymore!");
+    		        ChargingCmd chargingCmd = new ChargingCmd(offerRecord);
+    		        chargingCmd.chargeValue =chargeValue;
+    		        chargingCmd.transactionID=0;
+    		        chargingCmd.spID=Config.profileSubScriber_spID;
+    		        chargingCmd.serviceID=Config.charging_serviceID;
+    		        chargingCmd.charge_date=new Timestamp(System.currentTimeMillis());
+    		        chargingCmd.resultCode=155;
+    		        chargingCmd.resultString="The chargeValue is < 0.";
+    		        
+    		        listChargeCmdProcessing.put(offerRecord.msisdn, chargingCmd);
+    		        queueChargingCmdResp.enqueue(chargingCmd);
+    		        return;
+    		    }
+    		    if( chargeValue > subBalance ){
+    		        chargeValue=subBalance;
+    		    }
+    			
+	
 				ChargingCmd chargingCmd = new ChargingCmd(offerRecord);
-				if(chargingCmd.chargeValue<=subInfoResp.balance){
-					listChargeCmdProcessing.put(offerRecord.msisdn, chargingCmd);
-					ChargingSession chargingSession = new ChargingSession(chargingCmd, queueChargingCmdResp, logger);
-					chargingSession.start();
-					chargingTps++;
-					concurrent++;
-				}
-				else{
-					listChargeCmdProcessing.put(offerRecord.msisdn, chargingCmd);
-					chargingCmd.charge_date = new Timestamp(System.currentTimeMillis());
-					chargingCmd.resultCode = 155;
-					chargingCmd.resultString = "The subscriber does not have enough balance";
-					queueChargingCmdResp.enqueue(chargingCmd);
-				}
-			}
-		}
-		else{
+				try {
+                    chargingCmd.transactionID=connection.getChargingTransactionId();
+                } catch (SQLException e) {
+                    // TODO Auto-generated catch block
+                    logError("OnGetSubInfoResp getChargingTransactionId error:"+e.getMessage()+", msisdn:"+offerRecord.msisdn);
+                    return;
+                }
+                chargingCmd.spID=Config.profileSubScriber_spID;
+                chargingCmd.serviceID=Config.charging_serviceID;
+                chargingCmd.chargeValue=chargeValue;
+                chargingCmd.paid_value=offerRecord.paid_value;
+                listChargeCmdProcessing.put(offerRecord.msisdn, chargingCmd);
+                ChargingSession chargingSession = new ChargingSession(chargingCmd, queueChargingCmdResp, logger);
+                chargingSession.start();
+                chargingTps++;
+                concurrent++;
+    			
+		    }else{
+                logError("OnGetSubInfoResp msisdn:"+offerRecord.msisdn+" got got balance=0");
+                ChargingCmd chargingCmd = new ChargingCmd(offerRecord);
+                chargingCmd.chargeValue =0;
+                chargingCmd.transactionID=0;
+                chargingCmd.spID=Config.profileSubScriber_spID;
+                chargingCmd.serviceID=Config.charging_serviceID;
+                chargingCmd.charge_date=new Timestamp(System.currentTimeMillis());
+                chargingCmd.resultCode=155;
+                chargingCmd.resultString="The chargeValue is < 0.";
+                
+                listChargeCmdProcessing.put(offerRecord.msisdn, chargingCmd);
+                queueChargingCmdResp.enqueue(chargingCmd);
+		    }
+		}else{
 			listRequestProcessing.remove(offerRecord.msisdn);
-			rechargeEventRecords.add(offerRecord.rechargeEventRecord);
+			if( offerRecord.rechargeEventRecord != null)
+			    rechargeEventRecords.add(offerRecord.rechargeEventRecord);
 			logError("Putback to re-check getSubInfo later, msisdn:"+offerRecord.msisdn);
 		}
 	}
@@ -277,8 +375,10 @@ public class ChargingProcess extends ProcessingThread {
 			}
 			else{
 				listRequestProcessing.remove(insertCDRCmdResp.cdrRecord.msisdn);
-				RechargeEventRecord rechargeEventRecord = chargingCmdResp.offerRecord.rechargeEventRecord;
-				finishProcessRechargeEventRecord(rechargeEventRecord);
+				if( chargingCmdResp.offerRecord.rechargeEventRecord !=null ){
+    				RechargeEventRecord rechargeEventRecord = chargingCmdResp.offerRecord.rechargeEventRecord;
+    				finishProcessRechargeEventRecord(rechargeEventRecord);
+				}
 			}
 			
 		}
@@ -292,8 +392,10 @@ public class ChargingProcess extends ProcessingThread {
 		// TODO Auto-generated method stub
 		if(updateOfferRecordCmdResp.resultCode==UpdateOfferRecordCmd.RESULT_OK){
 			listRequestProcessing.remove(updateOfferRecordCmdResp.offerRecord.msisdn);
-			RechargeEventRecord rechargeEventRecord = updateOfferRecordCmdResp.offerRecord.rechargeEventRecord;
-			finishProcessRechargeEventRecord(rechargeEventRecord);
+			if(updateOfferRecordCmdResp.offerRecord.rechargeEventRecord !=null){
+    			RechargeEventRecord rechargeEventRecord = updateOfferRecordCmdResp.offerRecord.rechargeEventRecord;
+    			finishProcessRechargeEventRecord(rechargeEventRecord);
+			}
 		}
 		else{
 			//re-update when error
@@ -305,18 +407,19 @@ public class ChargingProcess extends ProcessingThread {
 		// TODO Auto-generated method stub
 		CDRRecord cdrRecord = new CDRRecord();
 		cdrRecord.msisdn = chargingCmdResp.offerRecord.msisdn;
-		cdrRecord.sub_product_code = chargingCmdResp.offerRecord.sub_product_code;
-		cdrRecord.sub_id = chargingCmdResp.offerRecord.sub_id;
 		cdrRecord.date_time = chargingCmdResp.charge_date;
 		cdrRecord.offer_id = chargingCmdResp.offerRecord.offer_id;
 		cdrRecord.offer_type = chargingCmdResp.offerRecord.offer_type;
 		cdrRecord.package_name = chargingCmdResp.offerRecord.package_name;
-		cdrRecord.package_price = chargingCmdResp.offerRecord.package_price;
+		cdrRecord.package_value = chargingCmdResp.offerRecord.package_value;
 		cdrRecord.service_fee = chargingCmdResp.offerRecord.package_service_fee;
-		cdrRecord.charge_value = chargingCmdResp.offerRecord.package_price+chargingCmdResp.offerRecord.package_service_fee;
+		cdrRecord.charge_value = chargingCmdResp.chargeValue;
+		cdrRecord.paid_value_before=chargingCmdResp.paid_value;
 		cdrRecord.result_code = chargingCmdResp.resultCode;
 		cdrRecord.result_string = chargingCmdResp.resultString;
-		cdrRecord.status = chargingCmdResp.resultCode == 0? CDRRecord.CHARGE_SUCCESS:CDRRecord.CHARGE_FAILED;
+		cdrRecord.status = chargingCmdResp.resultCode == ChargingCmd.RESULT_OK? CDRRecord.CHARGE_SUCCESS:CDRRecord.CHARGE_FAILED;
+		cdrRecord.spID=chargingCmdResp.spID;
+		cdrRecord.serviceID=chargingCmdResp.serviceID;
 		InsertCDRCmd insertCDRCmd = new InsertCDRCmd(cdrRecord, queueInsertCDRRecordResp);
 		insertCDRCmd.cdrRecord = cdrRecord;
 		GlobalVars.cdrTableAccess.queueInsertCDRRecordReq.enqueue(insertCDRCmd);
@@ -326,16 +429,31 @@ public class ChargingProcess extends ProcessingThread {
 		// TODO Auto-generated method stub
 		concurrent--;
 		if(chargingCmdResp.resultCode==ChargingCmd.RESULT_OK){
-			String content = Config.messageContents[Config.smsLanguage].getParam("CONTENT_CHARGE_SUCCESS");
+		    
+		    OfferRecord offerRecord=chargingCmdResp.offerRecord;
+		    int totalCharge=offerRecord.package_value+offerRecord.package_service_fee;
+		    int chargeValue=chargingCmdResp.chargeValue;
+		    int paid_value=offerRecord.paid_value+chargeValue ;
+		    String content ="";
+		    if( paid_value >= totalCharge){ // has charged done.
+		        offerRecord.charge_status = OfferRecord.OFFER_CHARGE_STATUS_DONE;
+		        content= Config.messageContents[Config.smsLanguage].getParam("CONTENT_CHARGE_SUCCESS_ENOUGH");
+		    }else{
+		        offerRecord.charge_status = OfferRecord.OFFER_CHARGE_STATUS_CONTINUE;
+		        int own_value=totalCharge-paid_value;
+		        content= Config.messageContents[Config.smsLanguage].getParam("CONTENT_CHARGE_SUCCESS_NOT_ENOUGH");
+		        content = content.replaceAll("<OWE_VALUE>", DataPackageDisplay.getNumberString(own_value));
+		    }
+		    offerRecord.paid_value=paid_value;
+			
 			content = content.replaceAll("<CHARGE_VALUE>", DataPackageDisplay.getNumberString(chargingCmdResp.chargeValue));
-			content = content.replaceAll("<DATA_AMOUNT>", DataPackageDisplay.getDataAmountString(chargingCmdResp.offerRecord.package_data_amount));
 			content = content.replaceAll("<BORROW_DATE>", (new Date(chargingCmdResp.offerRecord.req_date.getTime()).toString()));
 			sendSms("856"+chargingCmdResp.offerRecord.msisdn, content, SmsTypes.CHARGING, chargingCmdResp.offerRecord.offer_id);
-			chargingCmdResp.offerRecord.charge_status = OfferRecord.OFFER_CHARGE_STATUS_PAID;
-			chargingCmdResp.offerRecord.charge_date = chargingCmdResp.charge_date;
-			chargingCmdResp.offerRecord.charge_result_code = chargingCmdResp.resultCode;
-			chargingCmdResp.offerRecord.charge_result_string = chargingCmdResp.resultString;
-			chargingCmdResp.offerRecord.rechargeEventRecord.status = 2;
+			
+			
+			chargingCmdResp.offerRecord.last_charge_date = chargingCmdResp.charge_date;
+			if(chargingCmdResp.offerRecord.rechargeEventRecord !=null)
+			    chargingCmdResp.offerRecord.rechargeEventRecord.status = 2;
 		}
 		
 		if(chargingCmdResp.resultCode == ChargingCmd.RESULT_OK||chargingCmdResp.resultCode==55){
@@ -406,7 +524,31 @@ public class ChargingProcess extends ProcessingThread {
 			}
 		}
 	}
-
+    private void getOfferRecords() {
+        if(GlobalVars.stopModuleFlag)
+            return;
+        // TODO Auto-generated method stub
+        if(! offerRecords.isEmpty())
+            return;
+        long curTime = System.currentTimeMillis();
+        if(offerRecords.isEmpty()){
+            if(nextTimeGetOfferRecords<curTime){
+                try {
+                      connection.getListOfferRecord(offerRecords);
+                } catch (SQLException e) {
+                    // TODO Auto-generated catch block
+                    logError("Get getOfferRecords error:"+e.getMessage());
+                    isConnected = false;
+                }                                   
+                if(offerRecords.isEmpty()){
+                    nextTimeGetOfferRecords = curTime + 1000;                     
+                }
+                else {                      
+                    nextTimeGetOfferRecords = curTime;
+                }
+            }
+        }
+    }
 	private void OnCliCmdReq(CmdRequest cmdRequest) {
 		// TODO Auto-generated method stub
 		if(cmdRequest.cmd.equalsIgnoreCase("Reload")){
