@@ -87,11 +87,12 @@ public class DbConnection extends MySQLConnection {
 	public void updateOfferRecord(OfferRecord offerRecordUpdate) throws SQLException {
 		// TODO Auto-generated method stub
 		PreparedStatement ps = null;
-		ps=connection.prepareStatement("UPDATE offers SET charge_status = ?, last_charge_date =?, paid_value=? WHERE offer_id=?");
+		ps=connection.prepareStatement("UPDATE offers SET charge_status = ?, last_charge_date =?, paid_value=?,skiped_first_recharge=? WHERE offer_id=?");
 		ps.setInt(1, offerRecordUpdate.charge_status);
 		ps.setTimestamp(2, offerRecordUpdate.last_charge_date);
 	    ps.setInt(3, offerRecordUpdate.paid_value);
-		ps.setInt(4, offerRecordUpdate.offer_id);
+	    ps.setInt(4, offerRecordUpdate.skiped_first_recharge);
+		ps.setInt(5, offerRecordUpdate.offer_id);
 		ps.execute();
 		ps.close();
 	}
@@ -143,6 +144,7 @@ public class DbConnection extends MySQLConnection {
             offerRecord.package_value = rs.getInt("package_value");
             offerRecord.package_service_fee = rs.getInt("package_service_fee");
             offerRecord.last_charge_date = rs.getTimestamp("last_charge_date");
+            offerRecord.skiped_first_recharge = rs.getInt("skiped_first_recharge");
             offerRecords.add(offerRecord);
         }
         rs.close();
@@ -155,7 +157,7 @@ public class DbConnection extends MySQLConnection {
 		OfferRecord offerRecord = null;
 		PreparedStatement ps=connection.prepareStatement(
 				"select offer_id,offer_type,msisdn,req_date,package_name,package_value,paid_value,"
-						+ "package_service_fee,last_charge_date FROM offers WHERE msisdn = ? AND status =? AND (charge_status = 0 or charge_status = 1)");
+						+ "package_service_fee,charge_status,last_charge_date,skiped_first_recharge FROM offers WHERE msisdn = ? AND status =? AND (charge_status = 0 or charge_status = 1)");
 		ps.setString(1, msisdn);
 		ps.setInt(2, OfferRecord.OFFER_STATUS_SUCCESS);
 		ps.execute();
@@ -171,7 +173,9 @@ public class DbConnection extends MySQLConnection {
 			offerRecord.paid_value=rs.getInt("paid_value");
 			offerRecord.package_value = rs.getInt("package_value");
 			offerRecord.package_service_fee = rs.getInt("package_service_fee");
+			offerRecord.charge_status=rs.getInt("charge_status");
 			offerRecord.last_charge_date = rs.getTimestamp("last_charge_date");
+			offerRecord.skiped_first_recharge = rs.getInt("skiped_first_recharge");
 			return offerRecord;
 		}
 		rs.close();

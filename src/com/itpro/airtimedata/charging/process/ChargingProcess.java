@@ -187,18 +187,23 @@ public class ChargingProcess extends ProcessingThread {
 							    if( rechargeEventRecord.recharge_value==0){ // recharge value=0 mean this is new active sub. So we'll move old offer to bad debit
 					                processNewActiveSubs(offerRecord);
 							    }else{
-    								GetSubInfoCmd getSubInfoCmd=new GetSubInfoCmd();
-    				                getSubInfoCmd.msisdn = msisdn;
-    				                getSubInfoCmd.transactionId = connection.getChargingTransactionId();
-    				                getSubInfoCmd.reqDate = new Date(System.currentTimeMillis());
-    				               // getSubInfoCmd.rechargeMsisdn = batchRechargeCmd.currentBatchRechargeElement.recharge_msisdn;
-    				                getSubInfoCmd.token = GlobalVars.paymentGWInterface.CURRENT_TOKEN;
-    				                getSubInfoCmd.queueResp = queueGetSubInfoResp;
-    				                logInfo(getSubInfoCmd.getReqString());
-    				                GlobalVars.paymentGWInterface.queueUserRequest.enqueue(getSubInfoCmd);
-    //				                
-    //								GetSubInfoSession getSubInfoSession = new GetSubInfoSession(msisdn, queueGetSubInfoResp , logger);
-    //								getSubInfoSession.start();
+							        if(offerRecord.charge_status==OfferRecord.OFFER_CHARGE_STATUS_CONTINUE || offerRecord.skiped_first_recharge>0){
+        								GetSubInfoCmd getSubInfoCmd=new GetSubInfoCmd();
+        				                getSubInfoCmd.msisdn = msisdn;
+        				                getSubInfoCmd.transactionId = connection.getChargingTransactionId();
+        				                getSubInfoCmd.reqDate = new Date(System.currentTimeMillis());
+        				               // getSubInfoCmd.rechargeMsisdn = batchRechargeCmd.currentBatchRechargeElement.recharge_msisdn;
+        				                getSubInfoCmd.token = GlobalVars.paymentGWInterface.CURRENT_TOKEN;
+        				                getSubInfoCmd.queueResp = queueGetSubInfoResp;
+        				                logInfo(getSubInfoCmd.getReqString());
+        				                GlobalVars.paymentGWInterface.queueUserRequest.enqueue(getSubInfoCmd);
+							        }else{
+							            offerRecord.skiped_first_recharge=1;
+							            UpdateOfferRecordCmd updateOfferCmd = new UpdateOfferRecordCmd(offerRecord, queueUpdateOfferRecordResp);
+							            rechargeEventRecord.status = 3;
+							            updateOfferRecord(updateOfferCmd);
+							            logInfo("Ignore first recharge event for "+offerRecord);
+							        }
 							    }
 							}
 							else{
@@ -300,7 +305,7 @@ public class ChargingProcess extends ProcessingThread {
 		// TODO Auto-generated method stub
 		OfferRecord offerRecord = listRequestProcessing.get(getSubInfoCmdRep.msisdn);
 		if( getSubInfoCmdRep!=null){ // check get subinfo ok
-		    int subBalance=200000; // got balance from getsubInfo
+		    int subBalance=100000; // got balance from getsubInfo
 		    if(subBalance > 0 ){
     		    int feeCharge=offerRecord.package_value+offerRecord.package_service_fee;
     		    int chargeValue=feeCharge-offerRecord.paid_value;

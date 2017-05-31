@@ -34,7 +34,7 @@ public class OfferRecord {
 	public int package_service_fee;
 	public int paid_value;
 	public Timestamp last_charge_date = null;
-
+	public int skiped_first_recharge;
 	public int status; //'0-new, 1-waiting confirm, 2-success, 3-reject, 4-cancel, 5-expired',
 	public int charge_status; //0-for first charge, 1-continue charge, 2-charge done, 3-bad debt
 	public RechargeEventRecord rechargeEventRecord;
@@ -53,6 +53,7 @@ public class OfferRecord {
 		result+="; status:"+status;
 		if(last_charge_date!=null)
 			result+="; charge_date:"+last_charge_date;
+		result+="; skiped_first_recharge:"+skiped_first_recharge;
 		result+="; charge_status:"+charge_status;
 		return result;
 	}
