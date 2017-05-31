@@ -426,6 +426,7 @@ public class ChargingProcess extends ProcessingThread {
 		cdrRecord.status = chargingCmdResp.resultCode == ChargingCmd.RESULT_OK? CDRRecord.CHARGE_SUCCESS:CDRRecord.CHARGE_FAILED;
 		cdrRecord.spID=chargingCmdResp.spID;
 		cdrRecord.serviceID=chargingCmdResp.serviceID;
+		cdrRecord.transactionID=chargingCmdResp.transactionID;
 		InsertCDRCmd insertCDRCmd = new InsertCDRCmd(cdrRecord, queueInsertCDRRecordResp);
 		insertCDRCmd.cdrRecord = cdrRecord;
 		GlobalVars.cdrTableAccess.queueInsertCDRRecordReq.enqueue(insertCDRCmd);
