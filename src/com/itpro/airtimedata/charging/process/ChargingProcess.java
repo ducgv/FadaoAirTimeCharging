@@ -412,6 +412,7 @@ public class ChargingProcess extends ProcessingThread {
 		// TODO Auto-generated method stub
 		CDRRecord cdrRecord = new CDRRecord();
 		cdrRecord.msisdn = chargingCmdResp.offerRecord.msisdn;
+		cdrRecord.province_code = chargingCmdResp.offerRecord.province_code;
 		cdrRecord.date_time = chargingCmdResp.charge_date;
 		cdrRecord.offer_id = chargingCmdResp.offerRecord.offer_id;
 		cdrRecord.offer_type = chargingCmdResp.offerRecord.offer_type;

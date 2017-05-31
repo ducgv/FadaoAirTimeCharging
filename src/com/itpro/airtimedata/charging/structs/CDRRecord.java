@@ -14,6 +14,7 @@ public class CDRRecord {
 	public static final int CHARGE_FAILED = 3;
 	public Timestamp date_time;
 	public String msisdn;
+	public int province_code;
 	public int offer_id;
 	public int offer_type;
 	public String package_name;
@@ -30,6 +31,7 @@ public class CDRRecord {
 	public String toString(){
 		String str= "CDRRecord: "
 				+ "msisdn:"+msisdn
+				+ "province_code:"+province_code
 				+ "; spID:"+spID
 				+ "; transactionID:"+transactionID
 				+ "; serviceID:"+serviceID

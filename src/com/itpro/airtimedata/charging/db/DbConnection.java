@@ -138,6 +138,7 @@ public class DbConnection extends MySQLConnection {
             offerRecord.offer_id = rs.getInt("offer_id");
             offerRecord.offer_type = rs.getInt("offer_type");
             offerRecord.msisdn = rs.getString("msisdn");
+            offerRecord.province_code=rs.getInt("province_code");
             offerRecord.req_date = rs.getTimestamp("req_date");
             offerRecord.package_name = rs.getString("package_name");
             offerRecord.paid_value=rs.getInt("paid_value");
@@ -156,7 +157,7 @@ public class DbConnection extends MySQLConnection {
 		// TODO Auto-generated method stub
 		OfferRecord offerRecord = null;
 		PreparedStatement ps=connection.prepareStatement(
-				"select offer_id,offer_type,msisdn,req_date,package_name,package_value,paid_value,"
+				"select offer_id,offer_type,msisdn,province_code,req_date,package_name,package_value,paid_value,"
 						+ "package_service_fee,charge_status,last_charge_date,skiped_first_recharge FROM offers WHERE msisdn = ? AND status =? AND (charge_status = 0 or charge_status = 1)");
 		ps.setString(1, msisdn);
 		ps.setInt(2, OfferRecord.OFFER_STATUS_SUCCESS);
@@ -168,6 +169,7 @@ public class DbConnection extends MySQLConnection {
 			offerRecord.offer_id = rs.getInt("offer_id");
 			offerRecord.offer_type = rs.getInt("offer_type");
 			offerRecord.msisdn = rs.getString("msisdn");
+			offerRecord.province_code=rs.getInt("province_code");
 			offerRecord.req_date = rs.getTimestamp("req_date");
 			offerRecord.package_name = rs.getString("package_name");
 			offerRecord.paid_value=rs.getInt("paid_value");
@@ -187,7 +189,7 @@ public class DbConnection extends MySQLConnection {
 		// TODO Auto-generated method stub
 		PreparedStatement ps = null;
 		String sql = "INSERT INTO cdr(date_time,msisdn,offer_id,offer_type,package_name,package_value,"
-				+ "service_fee,charge_value,result_code,result_string,status,transactionID,spID,serviceID,paid_value_before) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+				+ "service_fee,charge_value,result_code,result_string,status,transactionID,spID,serviceID,paid_value_before,province_code) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 		ps=connection.prepareStatement(sql);
 		ps.setTimestamp(1,cdrRecord.date_time);
 		ps.setString(2,cdrRecord.msisdn);
@@ -204,6 +206,7 @@ public class DbConnection extends MySQLConnection {
 		ps.setString(13,cdrRecord.spID);
 		ps.setString(14,cdrRecord.serviceID);
 		ps.setInt(15,cdrRecord.paid_value_before);
+	    ps.setInt(16,cdrRecord.province_code);
 		ps.execute();
 		ps.close();
 	}

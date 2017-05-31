@@ -37,9 +37,9 @@ public class AirTimeDataCharging {
 		GlobalVars.logManager = new ITProLog4j();
 		GlobalVars.logManager.Initialize(Config.homePath+"config"+General.filePathSeparator+Config.logConfigFileName,Config.homePath+"log"+Config.homePath+"config"+General.filePathSeparator);
 		GlobalVars.logManager.Start();
-		GlobalVars.logger = GlobalVars.logManager.GetInstance("AirTimeDataCharging",
+		GlobalVars.logger = GlobalVars.logManager.GetInstance("AirTimeCharging",
 				Config.homePath+"log"+General.filePathSeparator,
-				"AirTimeDataCharging",1,1,1,1,1,1,1,true);
+				"AirTimeCharging",1,1,1,1,1,1,1,true);
 		loadConfig();
 		
 		PDU.Init();
