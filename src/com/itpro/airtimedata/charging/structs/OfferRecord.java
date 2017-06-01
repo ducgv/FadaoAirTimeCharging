@@ -27,6 +27,7 @@ public class OfferRecord {
 	public int offer_id;
 	public int offer_type;
 	public String msisdn;
+	public String sub_id;
 	public int province_code;
 	public Timestamp req_date;
 	public String package_name;
@@ -42,6 +43,7 @@ public class OfferRecord {
 	public String toString(){
 		String result = "OfferRecord: ";
 		result+="; msisdn:"+msisdn;
+		result+="; sub_id:"+sub_id;
 		result+="; province_code:"+province_code;
 		result+="; offer_id:"+offer_id;
 		result+="; offer_type:"+offer_type;

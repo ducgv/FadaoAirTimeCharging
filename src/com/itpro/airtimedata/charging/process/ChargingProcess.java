@@ -24,6 +24,7 @@ import com.itpro.airtimedata.charging.structs.SubInfo;
 import com.itpro.airtimedata.charging.structs.UpdateOfferRecordCmd;
 import com.itpro.airtimedata.charging.util.DataPackageDisplay;
 import com.itpro.cli.CmdRequest;
+import com.itpro.paymentgw.PaymentGWResultCode;
 import com.itpro.paymentgw.cmd.GetSubInfoCmd;
 import com.itpro.util.Params;
 import com.itpro.util.ProcessingThread;
@@ -185,7 +186,8 @@ public class ChargingProcess extends ProcessingThread {
 							if(listRequestProcessing.get(msisdn)==null){
 							    listRequestProcessing.put(msisdn, offerRecord);
 							    if( rechargeEventRecord.recharge_value==0){ // recharge value=0 mean this is new active sub. So we'll move old offer to bad debit
-					                processNewActiveSubs(offerRecord);
+							        logger.Info("Got recharge event value=0,"+rechargeEventRecord);
+							        processNewActiveSubs(offerRecord);
 							    }else{
 							        if(offerRecord.charge_status==OfferRecord.OFFER_CHARGE_STATUS_CONTINUE || offerRecord.skiped_first_recharge>0){
         								GetSubInfoCmd getSubInfoCmd=new GetSubInfoCmd();
@@ -295,7 +297,7 @@ public class ChargingProcess extends ProcessingThread {
         chargingCmd.serviceID=Config.charging_serviceID;
         chargingCmd.charge_date=new Timestamp(System.currentTimeMillis());
         chargingCmd.resultCode=155;
-        chargingCmd.resultString="The subscriber is new active SIM.";
+        chargingCmd.resultString="The msisdn is re-actived to new owner";
         listChargeCmdProcessing.put(offerRecord.msisdn, chargingCmd);
         queueChargingCmdResp.enqueue(chargingCmd);
     }
@@ -304,8 +306,14 @@ public class ChargingProcess extends ProcessingThread {
 	private void OnGetSubInfoResp(GetSubInfoCmd getSubInfoCmdRep) {
 		// TODO Auto-generated method stub
 		OfferRecord offerRecord = listRequestProcessing.get(getSubInfoCmdRep.msisdn);
-		if( getSubInfoCmdRep!=null){ // check get subinfo ok
-		    int subBalance=100000; // got balance from getsubInfo
+		if( getSubInfoCmdRep.resultCode==PaymentGWResultCode.RC_GET_SUBS_INFO_SUCCESS){ // check get subinfo ok
+		    if( !getSubInfoCmdRep.subId.equals(offerRecord.sub_id) ){
+		        logger.Info("The msisdn: "+offerRecord.msisdn+" has changed sub_id from "+offerRecord.sub_id+" to "+getSubInfoCmdRep.subId);
+		        offerRecord.sub_id=getSubInfoCmdRep.subId;
+		        processNewActiveSubs(offerRecord);
+		        return;
+		    }
+		    int subBalance=getSubInfoCmdRep.balance; // got balance from getsubInfo
 		    if(subBalance > 0 ){
     		    int feeCharge=offerRecord.package_value+offerRecord.package_service_fee;
     		    int chargeValue=feeCharge-offerRecord.paid_value;
@@ -412,6 +420,7 @@ public class ChargingProcess extends ProcessingThread {
 		// TODO Auto-generated method stub
 		CDRRecord cdrRecord = new CDRRecord();
 		cdrRecord.msisdn = chargingCmdResp.offerRecord.msisdn;
+		cdrRecord.sub_id=chargingCmdResp.offerRecord.sub_id;
 		cdrRecord.province_code = chargingCmdResp.offerRecord.province_code;
 		cdrRecord.date_time = chargingCmdResp.charge_date;
 		cdrRecord.offer_id = chargingCmdResp.offerRecord.offer_id;
