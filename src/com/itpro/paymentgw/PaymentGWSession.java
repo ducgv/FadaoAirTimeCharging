@@ -147,9 +147,20 @@ public class PaymentGWSession extends ProcessingThread {
 		TopupPaymentApiWSPortType service = topupPaymentApiWS.getTopupPaymentApiWSHttpSoap11Endpoint();
 		TopupPaymentApiWSQeuryProfilefoResult result = service.qeuryProfileSubcriber(getSubInfoCmd.msisdn, ""+getSubInfoCmd.transactionId, (new SimpleDateFormat("yyyyMMdd")).format(getSubInfoCmd.reqDate), getSubInfoCmd.token);
 		getSubInfoCmd.result = PaymentGWResultCode.R_SUCCESS;
-		getSubInfoCmd.balance=result.getPpsBalance().isNil()?-1:Integer.parseInt(result.getPpsBalance().getValue());
+		try {
+		    getSubInfoCmd.balance=result.getPpsBalance().isNil()?-1:Integer.parseInt(result.getPpsBalance().getValue());
+        } catch (Exception e) {
+            logError("OnGetSubInfoCmd: Error when parse balance field of msisdn "+getSubInfoCmd.msisdn);
+            getSubInfoCmd.balance = -1;
+        }
+		try {
+		    getSubInfoCmd.subType = result.getPayType().isNil()?-1:Integer.parseInt(result.getPayType().getValue());
+        } catch (Exception e) {
+            logError("OnGetSubInfoCmd: Error when parse subType field of msisdn "+getSubInfoCmd.msisdn);
+            getSubInfoCmd.subType = -1;
+        }
 		getSubInfoCmd.subId=result.getSubID().isNil()?"-1": result.getSubID().getValue();
-		getSubInfoCmd.subType = result.getPayType().isNil()?-1:Integer.parseInt(result.getPayType().getValue());
+	
 		try {
 			getSubInfoCmd.activeDate = result.getActiveDate().isNil()?null:(new SimpleDateFormat("yyyyMMdd").parse(result.getActiveDate().getValue()));
 		} catch (ParseException e) {
