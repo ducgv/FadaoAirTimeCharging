@@ -89,6 +89,8 @@ public class AirTimeDataCharging {
 		GlobalVars.airTimeDataChargingCli.setTimeoutErrorString("Timeout");
 		GlobalVars.airTimeDataChargingCli.setSyntaxErrorString("Wrong Syntax");
 		GlobalVars.airTimeDataChargingCli.start();
+		
+		GlobalVars.logger.Info("start airTimeCharging v 2017-06-04");
 	}
 
 	public void loadConfig() {
