@@ -325,7 +325,7 @@ public class ChargingProcess extends ProcessingThread {
     		        ChargingCmd chargingCmd = new ChargingCmd(offerRecord);
     		        chargingCmd.chargeValue =chargeValue;
     		        chargingCmd.transactionID=0;
-    		        chargingCmd.spID=Config.profileSubScriber_spID;
+    		        chargingCmd.spID=Config.charging_spID;
     		        chargingCmd.serviceID=Config.charging_serviceID;
     		        chargingCmd.charge_date=new Timestamp(System.currentTimeMillis());
     		        chargingCmd.resultCode=155;
