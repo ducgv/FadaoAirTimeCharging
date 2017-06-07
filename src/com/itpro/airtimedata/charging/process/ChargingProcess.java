@@ -466,7 +466,7 @@ public class ChargingProcess extends ProcessingThread {
 		    offerRecord.paid_value=paid_value;
 			
 			content = content.replaceAll("<CHARGE_VALUE>", DataPackageDisplay.getNumberString(chargingCmdResp.chargeValue));
-			content = content.replaceAll("<BORROW_DATE>", (new Date(chargingCmdResp.offerRecord.req_date.getTime()).toString()));
+			content = content.replaceAll("<BORROW_DATE>", DataPackageDisplay.getDateFormat(new java.util.Date(chargingCmdResp.offerRecord.process_date.getTime())));
 			sendSms("856"+chargingCmdResp.offerRecord.msisdn, content, SmsTypes.CHARGING, chargingCmdResp.offerRecord.offer_id);
 			
 			

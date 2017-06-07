@@ -30,6 +30,7 @@ public class OfferRecord {
 	public String sub_id;
 	public int province_code;
 	public Timestamp req_date;
+	public Timestamp process_date;
 	public String package_name;
 	public int package_value;
 	public int package_service_fee;
@@ -48,6 +49,7 @@ public class OfferRecord {
 		result+="; offer_id:"+offer_id;
 		result+="; offer_type:"+offer_type;
 		result+="; req_date:"+req_date;
+	    result+="; process_date:"+process_date;
 		result+="; package_name:"+package_name;
 		result+="; package_value:"+package_value;
 	    result+="; paid_value:"+paid_value;
