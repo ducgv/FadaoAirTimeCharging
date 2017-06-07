@@ -35,7 +35,7 @@ import com.itpro.util.Queue;
  *
  */
 public class ChargingProcess extends ProcessingThread {
-    public static int MULTIPLIER =1000;
+    
 	DbConnection connection = null;
 	public boolean isConnected = false;
 	private long nextTimeGetRechargeEvents = System.currentTimeMillis();
@@ -316,7 +316,7 @@ public class ChargingProcess extends ProcessingThread {
 		    }
 		    int subBalance=getSubInfoCmdRep.balance; // got balance from getsubInfo
 		    //int subBalance=3167;  // for test
-		    if(subBalance >=MULTIPLIER ){
+		    if(subBalance >= Config.MULTIPLIER ){
     		    int feeCharge=offerRecord.package_value+offerRecord.package_service_fee;
     		    int chargeValue=feeCharge-offerRecord.paid_value;
     		    
@@ -336,7 +336,7 @@ public class ChargingProcess extends ProcessingThread {
     		        return;
     		    }
     		    if( chargeValue > subBalance ){
-    		        chargeValue= (subBalance/MULTIPLIER)*MULTIPLIER;
+    		        chargeValue= (subBalance/Config.MULTIPLIER)*Config.MULTIPLIER;
     		    }
     			
 	
@@ -359,7 +359,7 @@ public class ChargingProcess extends ProcessingThread {
                 concurrent++;
     			
 		    }else{
-                logError("OnGetSubInfoResp msisdn:"+offerRecord.msisdn+" got balance < "+MULTIPLIER);
+                logError("OnGetSubInfoResp msisdn:"+offerRecord.msisdn+" got balance < "+Config.MULTIPLIER);
                 ChargingCmd chargingCmd = new ChargingCmd(offerRecord);
                 chargingCmd.chargeValue =0;
                 chargingCmd.transactionID=0;

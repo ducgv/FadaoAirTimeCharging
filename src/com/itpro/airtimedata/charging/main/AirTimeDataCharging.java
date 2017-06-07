@@ -90,7 +90,7 @@ public class AirTimeDataCharging {
 		GlobalVars.airTimeDataChargingCli.setSyntaxErrorString("Wrong Syntax");
 		GlobalVars.airTimeDataChargingCli.start();
 		
-		GlobalVars.logger.Info("start airTimeCharging v 2017-06-05");
+		GlobalVars.logger.Info("start airTimeCharging v 2017-06-07.");
 	}
 
 	public void loadConfig() {
@@ -116,6 +116,7 @@ public class AirTimeDataCharging {
 		Config.charging_spID=cfgReader.getString("charging_spID", "1000117481");
 		Config.charging_spPassword=cfgReader.getString("charging_spPassword", "fadaoAASS@ADVetl");
 		Config.charging_serviceID=cfgReader.getString("charging_serviceID", "33334");
+		Config.MULTIPLIER=cfgReader.getInt("MULTIPLIER", 100);
 		if(cfgReader.isChanged())
 			cfgReader.save(file);
 		

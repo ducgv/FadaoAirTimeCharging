@@ -41,4 +41,5 @@ public class Config {
     public static String    charging_spID;
     public static String    charging_serviceID;
     public static String    charging_spPassword;
+    public static int       MULTIPLIER=100;
 }
