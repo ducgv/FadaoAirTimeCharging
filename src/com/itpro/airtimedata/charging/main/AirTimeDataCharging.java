@@ -103,19 +103,19 @@ public class AirTimeDataCharging {
 		Config.cliRequestTimeout = cfgReader.getInt("RequestTimeout", 60);
 		
 		cfgReader.setGroup("DB");
-		Config.dbServerName = cfgReader.getString("ServerIpAddr", "10.10.1.58");
-		Config.dbDatabaseName = cfgReader.getString("DbName", "airtime");
-		Config.dbUserName = cfgReader.getString("UserName", "airtime");;
-		Config.dbPassword = cfgReader.getString("Password", "airtime!@#itpro2017");
+		Config.dbServerName = cfgReader.getString("ServerIpAddr", "ServerIpAddr");
+		Config.dbDatabaseName = cfgReader.getString("DbName", "DbName");
+		Config.dbUserName = cfgReader.getString("UserName", "UserName");;
+		Config.dbPassword = cfgReader.getString("Password", "Password");
 		
 		cfgReader.setGroup("payment gw");
 		  
-		Config.profileSubScriber_spID=cfgReader.getString("profileSubScriber_spID", "1000117480");
-		Config.profileSubScriber_spPassword=cfgReader.getString("profileSubScriber_spPassword", "fadaoAASS@ADVetl");
+		Config.profileSubScriber_spID=cfgReader.getString("profileSubScriber_spID", "profileSubScriber_spID");
+		Config.profileSubScriber_spPassword=cfgReader.getString("profileSubScriber_spPassword", "profileSubScriber_spPassword");
 	    
-		Config.charging_spID=cfgReader.getString("charging_spID", "1000117481");
-		Config.charging_spPassword=cfgReader.getString("charging_spPassword", "fadaoAASS@ADVetl");
-		Config.charging_serviceID=cfgReader.getString("charging_serviceID", "33334");
+		Config.charging_spID=cfgReader.getString("charging_spID", "charging_spID");
+		Config.charging_spPassword=cfgReader.getString("charging_spPassword", "charging_spPassword");
+		Config.charging_serviceID=cfgReader.getString("charging_serviceID", "charging_serviceID");
 		Config.MULTIPLIER=cfgReader.getInt("MULTIPLIER", 100);
 		if(cfgReader.isChanged())
 			cfgReader.save(file);
