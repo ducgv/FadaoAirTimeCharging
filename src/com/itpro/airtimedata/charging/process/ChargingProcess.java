@@ -20,7 +20,6 @@ import com.itpro.airtimedata.charging.structs.MTRecord;
 import com.itpro.airtimedata.charging.structs.OfferRecord;
 import com.itpro.airtimedata.charging.structs.RechargeEventRecord;
 import com.itpro.airtimedata.charging.structs.SmsTypes;
-import com.itpro.airtimedata.charging.structs.SubInfo;
 import com.itpro.airtimedata.charging.structs.UpdateOfferRecordCmd;
 import com.itpro.airtimedata.charging.util.DataPackageDisplay;
 import com.itpro.cli.CmdRequest;
