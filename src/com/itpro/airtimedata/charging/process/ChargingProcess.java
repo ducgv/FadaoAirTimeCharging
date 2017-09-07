@@ -198,6 +198,7 @@ public class ChargingProcess extends ProcessingThread {
         				                getSubInfoCmd.token = GlobalVars.paymentGWInterface.CURRENT_TOKEN;
         				                getSubInfoCmd.queueResp = queueGetSubInfoResp;
         				                logInfo(getSubInfoCmd.getReqString());
+        				                chargingTps++; 
         				                GlobalVars.paymentGWInterface.queueUserRequest.enqueue(getSubInfoCmd);
 							        }else{
 							            offerRecord.skiped_first_recharge=1;
@@ -250,6 +251,7 @@ public class ChargingProcess extends ProcessingThread {
                          getSubInfoCmd.token = GlobalVars.paymentGWInterface.CURRENT_TOKEN;
                          getSubInfoCmd.queueResp = queueGetSubInfoResp;
                          logInfo(getSubInfoCmd.getReqString());
+                         chargingTps++; 
                          GlobalVars.paymentGWInterface.queueUserRequest.enqueue(getSubInfoCmd);
                     } catch (SQLException e) {
                         e.printStackTrace();
@@ -300,6 +302,7 @@ public class ChargingProcess extends ProcessingThread {
 
 	private void OnGetSubInfoResp(GetSubInfoCmd getSubInfoCmdRep) {
 		// TODO Auto-generated method stub
+	    chargingTps--; 
 		OfferRecord offerRecord = listRequestProcessing.get(getSubInfoCmdRep.msisdn);
 		if( getSubInfoCmdRep.resultCode==PaymentGWResultCode.RC_GET_SUBS_INFO_SUCCESS){ // check get subinfo ok
 		    if( !getSubInfoCmdRep.subId.equals(offerRecord.sub_id) ){
