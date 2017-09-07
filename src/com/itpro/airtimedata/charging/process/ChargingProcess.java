@@ -47,7 +47,6 @@ public class ChargingProcess extends ProcessingThread {
 	public static boolean isExceed = false;
 	public static int chargingTps = 0;	
 	public static int concurrent = 0;
-	public int rechargeEventProcessingCount;
 	public Queue queueChargingCmdResp = new Queue();
 	public Queue queueUpdateOfferRecordResp = new Queue();
 	public Queue queueInsertCDRRecordResp = new Queue();
@@ -176,6 +175,7 @@ public class ChargingProcess extends ProcessingThread {
 		if (!rechargeEventRecords.isEmpty() && !isExceed){		
 			if (concurrent < Config.maxChargingConcurrent) {
 				RechargeEventRecord rechargeEventRecord = rechargeEventRecords.remove(0);
+				logInfo("Processing for: "+rechargeEventRecord);
 				String msisdn = rechargeEventRecord.msisdn.startsWith("856")?rechargeEventRecord.msisdn.replaceFirst("856", ""):rechargeEventRecord.msisdn;
 				if(listChargeCmdProcessing.get(msisdn)==null){
 					try {
@@ -239,26 +239,21 @@ public class ChargingProcess extends ProcessingThread {
 		if (!offerRecords.isEmpty() && !isExceed){     
             if (concurrent < Config.maxChargingConcurrent) {
                 OfferRecord offerRecord=offerRecords.remove(0);
+                logInfo("Processing for: "+offerRecord);
                 if(listChargeCmdProcessing.get(offerRecord.msisdn)==null){
-                    if(listRequestProcessing.get(offerRecord.msisdn)==null){
-                        listRequestProcessing.put(offerRecord.msisdn, offerRecord);
-                        GetSubInfoCmd getSubInfoCmd=new GetSubInfoCmd();
-                        getSubInfoCmd.msisdn = offerRecord.msisdn;
-                        try {
-                            getSubInfoCmd.transactionId = connection.getChargingTransactionId();
-                            getSubInfoCmd.reqDate = new Date(System.currentTimeMillis());
-                            // getSubInfoCmd.rechargeMsisdn = batchRechargeCmd.currentBatchRechargeElement.recharge_msisdn;
-                             getSubInfoCmd.token = GlobalVars.paymentGWInterface.CURRENT_TOKEN;
-                             getSubInfoCmd.queueResp = queueGetSubInfoResp;
-                             logInfo(getSubInfoCmd.getReqString());
-                             GlobalVars.paymentGWInterface.queueUserRequest.enqueue(getSubInfoCmd);
-                        } catch (SQLException e) {
-                            e.printStackTrace();
-                            logError("process->getChargingTransactionId error:"+ e.getMessage());
-                        }
-
-                    }else{
-                        logInfo("Offer is already processing:"+ offerRecord);
+                    GetSubInfoCmd getSubInfoCmd=new GetSubInfoCmd();
+                    getSubInfoCmd.msisdn = offerRecord.msisdn;
+                    try {
+                        getSubInfoCmd.transactionId = connection.getChargingTransactionId();
+                        getSubInfoCmd.reqDate = new Date(System.currentTimeMillis());
+                        // getSubInfoCmd.rechargeMsisdn = batchRechargeCmd.currentBatchRechargeElement.recharge_msisdn;
+                         getSubInfoCmd.token = GlobalVars.paymentGWInterface.CURRENT_TOKEN;
+                         getSubInfoCmd.queueResp = queueGetSubInfoResp;
+                         logInfo(getSubInfoCmd.getReqString());
+                         GlobalVars.paymentGWInterface.queueUserRequest.enqueue(getSubInfoCmd);
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                        logError("process->getChargingTransactionId error:"+ e.getMessage());
                     }
                 }else{
                     logInfo("Offer is already charging:"+ offerRecord);
@@ -373,8 +368,11 @@ public class ChargingProcess extends ProcessingThread {
 		    }
 		}else{
 			listRequestProcessing.remove(offerRecord.msisdn);
-			if( offerRecord.rechargeEventRecord != null)
+			if( offerRecord.rechargeEventRecord != null){
 			    rechargeEventRecords.add(offerRecord.rechargeEventRecord);
+			}else{
+			    offerRecords.add(offerRecord);
+			}
 			logError("Putback to re-check getSubInfo later, msisdn:"+offerRecord.msisdn);
 		}
 	}
@@ -503,7 +501,6 @@ public class ChargingProcess extends ProcessingThread {
 
 	private void finishProcessRechargeEventRecord(RechargeEventRecord rechargeEventRecord) {
 		// TODO Auto-generated method stub
-		rechargeEventProcessingCount--;
 		try {
 			connection.updateRechargeEvent(rechargeEventRecord);
 		} catch (SQLException e) {
@@ -518,20 +515,18 @@ public class ChargingProcess extends ProcessingThread {
 		if(GlobalVars.stopModuleFlag)
 			return;
 		// TODO Auto-generated method stub
-		if(rechargeEventProcessingCount>0||!rechargeEventRecords.isEmpty())
+		if(!rechargeEventRecords.isEmpty())
 			return;
 		long curTime = System.currentTimeMillis();
 		if(rechargeEventRecords.isEmpty()){
 			if(nextTimeGetRechargeEvents<curTime){
 				try {
 					rechargeEventRecords = connection.getRechargeEventRecords();
-					rechargeEventProcessingCount = rechargeEventRecords.size();
 				} catch (SQLException e) {
 					// TODO Auto-generated catch block
 					logError("Get RechargeEventRecords error:"+e.getMessage());
 					isConnected = false;
 					rechargeEventRecords = new Vector<RechargeEventRecord>();
-					rechargeEventProcessingCount = 0;
 				}									
 				if(rechargeEventRecords.isEmpty()){
 					nextTimeGetRechargeEvents = curTime + 1000;						
@@ -549,21 +544,27 @@ public class ChargingProcess extends ProcessingThread {
         if(! offerRecords.isEmpty())
             return;
         long curTime = System.currentTimeMillis();
-        if(offerRecords.isEmpty()){
-            if(nextTimeGetOfferRecords<curTime){
-                try {
-                      connection.getListOfferRecord(offerRecords);
-                } catch (SQLException e) {
-                    // TODO Auto-generated catch block
-                    logError("Get getOfferRecords error:"+e.getMessage());
-                    isConnected = false;
-                }                                   
-                if(offerRecords.isEmpty()){
-                    nextTimeGetOfferRecords = curTime + 1000;                     
+        if(nextTimeGetOfferRecords<curTime){
+            try {
+                Vector<OfferRecord> offerRecords_tmp = connection.getListOfferRecord();
+                for (OfferRecord offerRecord : offerRecords_tmp) {
+                    if(listRequestProcessing.get(offerRecord.msisdn)==null){
+                        offerRecords.add(offerRecord);
+                        listRequestProcessing.put(offerRecord.msisdn, offerRecord);
+                    }else{
+                        logInfo("Offer is already processing:"+ offerRecord);
+                    }
                 }
-                else {                      
-                    nextTimeGetOfferRecords = curTime;
-                }
+            } catch (SQLException e) {
+                // TODO Auto-generated catch block
+                logError("Get getOfferRecords error:"+e.getMessage());
+                isConnected = false;
+            }                                   
+            if(offerRecords.isEmpty()){
+                nextTimeGetOfferRecords = curTime + 1000;                     
+            }
+            else {                      
+                nextTimeGetOfferRecords = curTime;
             }
         }
     }
