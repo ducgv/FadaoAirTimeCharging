@@ -92,7 +92,8 @@ public class PaymentGWSession extends ProcessingThread {
 		logInfo(paymentPostpaidCmd.getReqString());
 		TopupPaymentApiWS topupPaymentApiWS = new TopupPaymentApiWS();
 		TopupPaymentApiWSPortType service = topupPaymentApiWS.getTopupPaymentApiWSHttpSoap11Endpoint();
-		TopupPaymentApiWSPaymentPospaidResult result = service.paymentPostpaid(paymentPostpaidCmd.rechargeMsisdn, ""+paymentPostpaidCmd.amount, ""+paymentPostpaidCmd.transactionId, (new SimpleDateFormat("yyyyMMdd")).format(paymentPostpaidCmd.reqDate), paymentPostpaidCmd.token);
+		//TopupPaymentApiWSPaymentPospaidResult result = service.paymentPostpaid(paymentPostpaidCmd.rechargeMsisdn, ""+paymentPostpaidCmd.amount, ""+paymentPostpaidCmd.transactionId, (new SimpleDateFormat("yyyyMMdd")).format(paymentPostpaidCmd.reqDate), paymentPostpaidCmd.token);
+		TopupPaymentApiWSPaymentPospaidResult result = service.paymentPostpaid(paymentPostpaidCmd.rechargeMsisdn, ""+paymentPostpaidCmd.amount, ""+paymentPostpaidCmd.transactionId, (new SimpleDateFormat("yyyyMMdd")).format(paymentPostpaidCmd.reqDate), ""+paymentPostpaidCmd.balanceBonus, ""+paymentPostpaidCmd.dataBonus, paymentPostpaidCmd.originalNumber, paymentPostpaidCmd.token);
 		paymentPostpaidCmd.result = PaymentGWResultCode.R_SUCCESS;
 		paymentPostpaidCmd.advanceBalance = result.getMsisdnAdvanceBalance().isNil()?0:Integer.parseInt(result.getMsisdnAdvanceBalance().getValue());
 		paymentPostpaidCmd.debitBalance = result.getMsisdnDebitBalance().isNil()?0:Integer.parseInt(result.getMsisdnDebitBalance().getValue());
@@ -102,8 +103,8 @@ public class PaymentGWSession extends ProcessingThread {
 			paymentPostpaidCmd.resultString=header.getResultDes().getValue();
 		}
 		else{
-			paymentPostpaidCmd.resultCode=-1;
-			paymentPostpaidCmd.resultString="Call API function error";
+			paymentPostpaidCmd.resultCode=PaymentGWResultCode.RC_CALL_SOAP_ERROR;
+			paymentPostpaidCmd.resultString=PaymentGWResultCode.resultDesc.get(PaymentGWResultCode.RC_CALL_SOAP_ERROR);
 		}
 		
 		logInfo(paymentPostpaidCmd.getRespString());
@@ -115,7 +116,8 @@ public class PaymentGWSession extends ProcessingThread {
 		logInfo(topupPrepaidCmd.getReqString());
 		TopupPaymentApiWS topupPaymentApiWS = new TopupPaymentApiWS();
 		TopupPaymentApiWSPortType service = topupPaymentApiWS.getTopupPaymentApiWSHttpSoap11Endpoint();
-		TopupPaymentApiWSTopupPrepaidResult result = service.topupPrepaid(topupPrepaidCmd.rechargeMsisdn, ""+topupPrepaidCmd.amount, ""+topupPrepaidCmd.transactionId, (new SimpleDateFormat("yyyyMMdd")).format(topupPrepaidCmd.reqDate), topupPrepaidCmd.token);
+		//TopupPaymentApiWSTopupPrepaidResult result = service.topupPrepaid(topupPrepaidCmd.msisdn, ""+topupPrepaidCmd.amount, ""+topupPrepaidCmd.transactionId, (new SimpleDateFormat("yyyyMMdd")).format(topupPrepaidCmd.reqDate), topupPrepaidCmd.token);
+		TopupPaymentApiWSTopupPrepaidResult result = service.topupPrepaid(topupPrepaidCmd.msisdn, ""+topupPrepaidCmd.amount, ""+topupPrepaidCmd.transactionId, (new SimpleDateFormat("yyyyMMdd")).format(topupPrepaidCmd.reqDate), ""+topupPrepaidCmd.balanceBonus, ""+topupPrepaidCmd.dataBonus, topupPrepaidCmd.originalNumber, topupPrepaidCmd.token);
 		topupPrepaidCmd.result = PaymentGWResultCode.R_SUCCESS;
 		topupPrepaidCmd.currentBalance = result.getTargetCurrentBalance().isNil()?0:Integer.parseInt(result.getTargetCurrentBalance().getValue());
 		try {
@@ -123,7 +125,7 @@ public class PaymentGWSession extends ProcessingThread {
 		} catch (ParseException e) {
 			// TODO Auto-generated catch block
 			//e.printStackTrace();
-			logError("OnGetSubInfoCmd: Error when parse activeDate field of msisdn "+topupPrepaidCmd.rechargeMsisdn);
+			logError("OnTopupPrepaidCmd: Error when parse newActiveDate field of msisdn "+topupPrepaidCmd.msisdn);
 			topupPrepaidCmd.newActiveDate = null;
 		}
 		TopupPaymentApiWSTopupPrepaidHeader header = result.getTopupMasterSimPrepaidHeader().isNil()?null:result.getTopupMasterSimPrepaidHeader().getValue();
@@ -132,8 +134,8 @@ public class PaymentGWSession extends ProcessingThread {
 			topupPrepaidCmd.resultString=header.getResultDes().getValue();
 		}
 		else{
-			topupPrepaidCmd.resultCode=-1;
-			topupPrepaidCmd.resultString="Call API function error";
+			topupPrepaidCmd.resultCode=PaymentGWResultCode.RC_CALL_SOAP_ERROR;
+			topupPrepaidCmd.resultString=PaymentGWResultCode.resultDesc.get(PaymentGWResultCode.RC_CALL_SOAP_ERROR);
 		}
 		
 		logInfo(topupPrepaidCmd.getRespString());
