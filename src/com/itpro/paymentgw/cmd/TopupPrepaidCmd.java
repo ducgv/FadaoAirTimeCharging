@@ -21,6 +21,9 @@ public class TopupPrepaidCmd extends PaymentGWCmd {
 	//response
 	public int currentBalance;
 	public Date newActiveDate;
+	public int dataBonus;
+	public int balanceBonus;
+	public String originalNumber;
 	
 	
 	@Override
