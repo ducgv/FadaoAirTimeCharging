@@ -175,12 +175,12 @@ public class ChargingProcess extends ProcessingThread {
 		if (!rechargeEventRecords.isEmpty() && !isExceed){		
 			if (concurrent < Config.maxChargingConcurrent) {
 				RechargeEventRecord rechargeEventRecord = rechargeEventRecords.remove(0);
-				logInfo("Processing for: "+rechargeEventRecord);
 				String msisdn = rechargeEventRecord.msisdn.startsWith("856")?rechargeEventRecord.msisdn.replaceFirst("856", ""):rechargeEventRecord.msisdn;
 				if(listChargeCmdProcessing.get(msisdn)==null){
 					try {
 						OfferRecord offerRecord = connection.getUnPaidOfferRecord(msisdn);
 						if(offerRecord!=null){
+						    logInfo("Processing for: "+rechargeEventRecord);
 							offerRecord.rechargeEventRecord = rechargeEventRecord;
 							offerRecord.rechargeEventRecord.status = 3; //default
 							if(listRequestProcessing.get(msisdn)==null){
