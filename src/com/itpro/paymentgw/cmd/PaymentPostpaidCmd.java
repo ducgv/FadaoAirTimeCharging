@@ -21,6 +21,9 @@ public class PaymentPostpaidCmd extends PaymentGWCmd {
 	//response
 	public int advanceBalance;
 	public int debitBalance;
+	public String originalNumber;
+	public int balanceBonus;
+	public int dataBonus;
 	
 	
 	@Override
