@@ -5,12 +5,7 @@ package com.itpro.paymentgw;
 
 import java.util.Hashtable;
 
-
-
-
-
-
-import com.itpro.airtimedata.charging.main.Config;
+import com.itpro.airtime.charging.main.Config;
 import com.itpro.paymentgw.cmd.KeepAliveCmd;
 import com.itpro.paymentgw.cmd.LoginCmd;
 import com.itpro.paymentgw.cmd.PaymentGWCmd;
