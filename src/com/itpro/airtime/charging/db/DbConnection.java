@@ -128,8 +128,9 @@ public class DbConnection extends MySQLConnection {
 		}			
 		return rechargeEventRecords;
 	}
-    public void getListOfferRecord(Vector<OfferRecord> offerRecords) throws SQLException {
+    public   Vector<OfferRecord>  getListOfferRecord() throws SQLException {
         // TODO Auto-generated method stub
+        Vector<OfferRecord> offerRecords=new Vector<OfferRecord>();
         PreparedStatement ps=connection.prepareStatement("call get_list_offer_record()");
         ps.execute();
         ResultSet rs = ps.getResultSet();
@@ -153,7 +154,8 @@ public class DbConnection extends MySQLConnection {
             offerRecords.add(offerRecord);
         }
         rs.close();
-        ps.close(); 
+        ps.close();
+        return offerRecords;
     }
 	
 	
