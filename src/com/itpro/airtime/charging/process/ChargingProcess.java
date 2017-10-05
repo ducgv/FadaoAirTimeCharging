@@ -307,7 +307,7 @@ public class ChargingProcess extends ProcessingThread {
 		// TODO Auto-generated method stub
 		OfferRecord offerRecord = listRequestProcessing.get(getSubInfoCmdRep.msisdn);
 		if( getSubInfoCmdRep.resultCode==PaymentGWResultCode.RC_GET_SUBS_INFO_SUCCESS){ // check get subinfo ok
-		    if( !getSubInfoCmdRep.subId.equals(offerRecord.sub_id) ){
+		    if(offerRecord.sub_id!=null && !offerRecord.sub_id.equals("") && !getSubInfoCmdRep.subId.equals(offerRecord.sub_id) ){
 		        logger.Info("The msisdn: "+offerRecord.msisdn+" has changed sub_id from "+offerRecord.sub_id+" to "+getSubInfoCmdRep.subId);
 		        offerRecord.sub_id=getSubInfoCmdRep.subId;
 		        processNewActiveSubs(offerRecord);

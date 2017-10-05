@@ -41,7 +41,7 @@ public class GetSubInfoCmd extends PaymentGWCmd {
 		// TODO Auto-generated method stub
 		return "GetSubInfoResp: msisdn:"+msisdn+
 				"; transactionId:"+transactionId+
-				"; activeDate:"+(new SimpleDateFormat("yyyy-MM-dd")).format(activeDate)+
+				"; activeDate:"+((activeDate!=null)?(new SimpleDateFormat("yyyy-MM-dd")).format(activeDate):"NULL")+
 				"; subType:"+subType+
 				"; balance:"+balance+
 				"; subId:"+subId+
