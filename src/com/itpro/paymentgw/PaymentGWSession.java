@@ -64,28 +64,37 @@ public class PaymentGWSession extends ProcessingThread {
 	@Override
 	protected void process() {
 		// TODO Auto-generated method stub
-		if (userCmd instanceof LoginCmd) {
-			LoginCmd loginCmd = (LoginCmd)userCmd;
-			OnLoginCmd(loginCmd);
+		try{
+			if (userCmd instanceof LoginCmd) {
+				LoginCmd loginCmd = (LoginCmd)userCmd;
+				OnLoginCmd(loginCmd);
+			}
+			else if (userCmd instanceof KeepAliveCmd) {
+				KeepAliveCmd keepAliveCmd = (KeepAliveCmd)userCmd;
+				OnKeepAliveCmd(keepAliveCmd);
+			}
+			else if (userCmd instanceof GetSubInfoCmd) {
+				GetSubInfoCmd getSubInfoCmd = (GetSubInfoCmd)userCmd;
+				OnGetSubInfoCmd(getSubInfoCmd);
+			}
+			else if (userCmd instanceof TopupPrepaidCmd) {
+				TopupPrepaidCmd topupPrepaidCmd = (TopupPrepaidCmd)userCmd;
+				OnTopupPrepaidCmd(topupPrepaidCmd);
+			}
+			else if (userCmd instanceof PaymentPostpaidCmd) {
+				PaymentPostpaidCmd paymentPostpaidCmd = (PaymentPostpaidCmd)userCmd;
+				OnPaymentPostpaidCmd(paymentPostpaidCmd);
+			}
 		}
-		else if (userCmd instanceof KeepAliveCmd) {
-			KeepAliveCmd keepAliveCmd = (KeepAliveCmd)userCmd;
-			OnKeepAliveCmd(keepAliveCmd);
-		}
-		else if (userCmd instanceof GetSubInfoCmd) {
-			GetSubInfoCmd getSubInfoCmd = (GetSubInfoCmd)userCmd;
-			OnGetSubInfoCmd(getSubInfoCmd);
-		}
-		else if (userCmd instanceof TopupPrepaidCmd) {
-			TopupPrepaidCmd topupPrepaidCmd = (TopupPrepaidCmd)userCmd;
-			OnTopupPrepaidCmd(topupPrepaidCmd);
-		}
-		else if (userCmd instanceof PaymentPostpaidCmd) {
-			PaymentPostpaidCmd paymentPostpaidCmd = (PaymentPostpaidCmd)userCmd;
-			OnPaymentPostpaidCmd(paymentPostpaidCmd);
+		catch(Exception e){
+			userCmd.result = PaymentGWResultCode.R_ERROR;
+			userCmd.resultCode=PaymentGWResultCode.RC_CALL_SOAP_ERROR;
+			userCmd.resultString=e.getMessage();
+			logInfo(userCmd.getRespString());
+			queueResp.enqueue(userCmd);
 		}
 		stop();
-	}
+}
 
 	private void OnPaymentPostpaidCmd(PaymentPostpaidCmd paymentPostpaidCmd) {
 		// TODO Auto-generated method stub
@@ -187,6 +196,7 @@ public class PaymentGWSession extends ProcessingThread {
 
 	private void OnLoginCmd(LoginCmd loginCmd) {
 		// TODO Auto-generated method stub
+		/*
 		logInfo(loginCmd.getReqString());
 		TopupPaymentApiWS topupPaymentApiWS = new TopupPaymentApiWS();
 		TopupPaymentApiWSPortType service = topupPaymentApiWS.getTopupPaymentApiWSHttpSoap11Endpoint();
@@ -197,10 +207,46 @@ public class PaymentGWSession extends ProcessingThread {
 		loginCmd.token=result.getToken().getValue();		
 		logInfo(loginCmd.getRespString());
 		queueResp.enqueue(loginCmd);
+		*/
+		logInfo(loginCmd.getReqString());
+		TopupPaymentApiWS topupPaymentApiWS = null;
+		TopupPaymentApiWSPortType service = null;
+		TopupPaymentApiWSLoginResult result = null;
+		try {
+			topupPaymentApiWS = new TopupPaymentApiWS();
+			service = topupPaymentApiWS.getTopupPaymentApiWSHttpSoap11Endpoint();
+			result = service.loginWS(loginCmd.spID, loginCmd.spPassword, ""+loginCmd.transactionId);
+		} catch (Exception e) {
+			// TODO: handle exception
+			loginCmd.result = PaymentGWResultCode.R_ERROR;
+			loginCmd.resultCode=PaymentGWResultCode.RC_CALL_SOAP_ERROR;
+			loginCmd.resultString=e.getMessage();
+			logInfo(loginCmd.getRespString());
+			queueResp.enqueue(loginCmd);
+			return;
+		}
+
+		loginCmd.result = PaymentGWResultCode.R_SUCCESS;
+		try{
+			loginCmd.resultCode=Integer.parseInt(result.getResultcode().getValue());
+		}
+		catch(Exception e){
+			loginCmd.result = PaymentGWResultCode.R_ERROR;
+			loginCmd.resultCode=PaymentGWResultCode.RC_CALL_SOAP_ERROR;
+			loginCmd.resultString=PaymentGWResultCode.resultDesc.get(PaymentGWResultCode.RC_CALL_SOAP_ERROR);
+			logError(loginCmd.getRespString());
+			queueResp.enqueue(loginCmd);
+			return;
+		}
+		loginCmd.resultString=result.getResultDescrib().getValue();
+		loginCmd.token=result.getToken().getValue();
+		logInfo(loginCmd.getRespString());
+		queueResp.enqueue(loginCmd);
 	}
 	
 	private void OnKeepAliveCmd(KeepAliveCmd keepAliveCmd) {
 		// TODO Auto-generated method stub
+		/*
 		logInfo(keepAliveCmd.getReqString());
 		TopupPaymentApiWS topupPaymentApiWS = new TopupPaymentApiWS();
 		TopupPaymentApiWSPortType service = topupPaymentApiWS.getTopupPaymentApiWSHttpSoap11Endpoint();
@@ -208,6 +254,41 @@ public class PaymentGWSession extends ProcessingThread {
 		keepAliveCmd.result = PaymentGWResultCode.R_SUCCESS;
 		keepAliveCmd.resultCode=Integer.parseInt(result.getResultcode().getValue());
 		keepAliveCmd.resultString=result.getResultDes().getValue();
+		logInfo(keepAliveCmd.getRespString());
+		queueResp.enqueue(keepAliveCmd);
+		*/
+		logInfo(keepAliveCmd.getReqString());
+		TopupPaymentApiWS topupPaymentApiWS = null;
+		TopupPaymentApiWSPortType service = null;
+		TopupPaymentApiWSKeepAliveResult result = null;
+		try {
+			topupPaymentApiWS = new TopupPaymentApiWS();
+			service = topupPaymentApiWS.getTopupPaymentApiWSHttpSoap11Endpoint();
+			result = service.keepalive(keepAliveCmd.token);
+		} catch (Exception e) {
+			// TODO: handle exception
+			keepAliveCmd.result = PaymentGWResultCode.R_ERROR;
+			keepAliveCmd.resultCode=PaymentGWResultCode.RC_CALL_SOAP_ERROR;
+			keepAliveCmd.resultString=e.getMessage();
+			logError(keepAliveCmd.getRespString());
+			queueResp.enqueue(keepAliveCmd);
+			return;
+		}
+
+		keepAliveCmd.result = PaymentGWResultCode.R_SUCCESS;
+		try{
+			keepAliveCmd.resultCode=Integer.parseInt(result.getResultcode().getValue());
+			keepAliveCmd.resultString=result.getResultDes().isNil()?"NULL value":result.getResultDes().getValue();
+		}
+		catch(Exception e){
+			keepAliveCmd.result = PaymentGWResultCode.R_ERROR;
+			keepAliveCmd.resultCode=PaymentGWResultCode.RC_CALL_SOAP_ERROR;
+			keepAliveCmd.resultString=PaymentGWResultCode.resultDesc.get(PaymentGWResultCode.RC_CALL_SOAP_ERROR);
+			logError(keepAliveCmd.getRespString());
+			queueResp.enqueue(keepAliveCmd);
+			return;
+		}
+		
 		logInfo(keepAliveCmd.getRespString());
 		queueResp.enqueue(keepAliveCmd);
 	}

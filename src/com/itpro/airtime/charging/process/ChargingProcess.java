@@ -332,8 +332,12 @@ public class ChargingProcess extends ProcessingThread {
     		        queueChargingCmdResp.enqueue(chargingCmd);
     		        return;
     		    }
+    		    
     		    if( chargeValue > subBalance ){
-    		        chargeValue= (subBalance/Config.MULTIPLIER)*Config.MULTIPLIER;
+    		    	if(offerRecord.remark!=null && offerRecord.remark.equals("CUTOVER"))
+    		    		chargeValue = subBalance;
+    		    	else
+    		    		chargeValue = (subBalance/Config.MULTIPLIER)*Config.MULTIPLIER;
     		    }
     			
 	
