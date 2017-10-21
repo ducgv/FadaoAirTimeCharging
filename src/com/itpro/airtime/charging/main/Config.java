@@ -12,8 +12,8 @@ import com.itpro.util.Params;
  */
 public class Config {
 	public static String	homePath;
-	public static final String sysConfigFileName = "airTimeDataCharging.cfg";
-	public static final String logConfigFileName = "loggerAirTimeDataCharging.cfg";
+	public static final String sysConfigFileName = "airTimeCharging.cfg";
+	public static final String logConfigFileName = "loggerAirTimeCharging.cfg";
 	
 	public static int		cliListenPort;	
 	public static int 		cliRequestTimeout;
