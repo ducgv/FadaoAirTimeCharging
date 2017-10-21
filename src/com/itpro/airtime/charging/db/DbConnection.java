@@ -100,9 +100,7 @@ public class DbConnection extends MySQLConnection {
 	public Vector<RechargeEventRecord> getRechargeEventRecords() throws SQLException {
 		// TODO Auto-generated method stub
 		Vector<RechargeEventRecord> rechargeEventRecords = new Vector<RechargeEventRecord>();
-		PreparedStatement ps=connection.prepareStatement(
-				"SELECT id, date_time, msisdn, recharge_value FROM recharge_event WHERE `status` = 0");
-		ps.setMaxRows(30);
+		PreparedStatement ps=connection.prepareStatement("call getRechargeEventRecords()");
 		ps.execute();
 		ResultSet rs = ps.getResultSet();
 		while(rs.next()) {
