@@ -90,7 +90,7 @@ public class AirTimeDataCharging {
 		GlobalVars.airTimeDataChargingCli.setSyntaxErrorString("Wrong Syntax");
 		GlobalVars.airTimeDataChargingCli.start();
 		
-		GlobalVars.logger.Info("start airTimeCharging v 2017-10-20.");
+		GlobalVars.logger.Info("start airTimeCharging v 2017-10-21.");
 	}
 
 	public void loadConfig() {
