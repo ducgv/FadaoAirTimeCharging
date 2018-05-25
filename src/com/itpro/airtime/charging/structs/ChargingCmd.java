@@ -10,6 +10,9 @@ import java.sql.Timestamp;
 
 public class ChargingCmd {
 	public final static int RESULT_OK = 405000000;
+	public final static int RESULT_BAD_DEBIT = 55;
+	public final static int RESULT_BALANCE_NOT_ENOUGH = 155;
+	public static final int RESULT_GETSUBINFO_FAILED = 255;
 	public OfferRecord offerRecord;
 	public Timestamp charge_date;
 	public int chargeValue;

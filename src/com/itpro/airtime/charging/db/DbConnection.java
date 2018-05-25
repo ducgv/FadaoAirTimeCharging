@@ -162,7 +162,7 @@ public class DbConnection extends MySQLConnection {
 		OfferRecord offerRecord = null;
 		PreparedStatement ps=connection.prepareStatement(
 				"select offer_id,offer_type,msisdn,sub_id,province_code,req_date,process_date,package_name,package_value,paid_value,"
-						+ "package_service_fee,charge_status,last_charge_date,skiped_first_recharge,old_paid_value,remark FROM offers WHERE msisdn = ? AND status =? AND (charge_status = 0 or charge_status = 1)");
+						+ "package_service_fee,charge_status,last_charge_date,skiped_first_recharge,old_paid_value,remark FROM offers WHERE msisdn = ? AND status =? AND (charge_status = 0 or charge_status = 1) AND datediff(now(), process_date) < 180");
 		ps.setString(1, msisdn);
 		ps.setInt(2, OfferRecord.OFFER_STATUS_SUCCESS);
 		ps.execute();

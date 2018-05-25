@@ -12,6 +12,7 @@ import java.sql.Timestamp;
 public class CDRRecord {
 	public static final int CHARGE_SUCCESS = 2;
 	public static final int CHARGE_FAILED = 3;
+	public static final int CHARGE_BAD_DEBIT = 4;
 	public Timestamp date_time;
 	public String msisdn;
 	public String sub_id;

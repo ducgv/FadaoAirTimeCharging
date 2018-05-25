@@ -180,42 +180,48 @@ public class ChargingProcess extends ProcessingThread {
 					try {
 						OfferRecord offerRecord = connection.getUnPaidOfferRecord(msisdn);
 						if(offerRecord!=null){
-						    logInfo("Processing for: "+rechargeEventRecord);
-							offerRecord.rechargeEventRecord = rechargeEventRecord;
-							offerRecord.rechargeEventRecord.status = 3; //default
-							if(listRequestProcessing.get(msisdn)==null){
-							    listRequestProcessing.put(msisdn, offerRecord);
-							    if( rechargeEventRecord.recharge_value==0){ // recharge value=0 mean this is new active sub. So we'll move old offer to bad debit
-							        logger.Info("Got recharge event value=0,"+rechargeEventRecord);
-							        processNewActiveSubs(offerRecord);
-							    }else{
-							        if(offerRecord.charge_status==OfferRecord.OFFER_CHARGE_STATUS_CONTINUE || offerRecord.skiped_first_recharge>0){
-        								GetSubInfoCmd getSubInfoCmd=new GetSubInfoCmd();
-        				                getSubInfoCmd.msisdn = msisdn;
-        				                getSubInfoCmd.transactionId = connection.getChargingTransactionId();
-        				                getSubInfoCmd.reqDate = new Date(System.currentTimeMillis());
-        				               // getSubInfoCmd.rechargeMsisdn = batchRechargeCmd.currentBatchRechargeElement.recharge_msisdn;
-        				                getSubInfoCmd.token = GlobalVars.paymentGWInterface.CURRENT_TOKEN;
-        				                getSubInfoCmd.queueResp = queueGetSubInfoResp;
-        				                logInfo(getSubInfoCmd.getReqString());
-        				                chargingTps++; 
-        				                GlobalVars.paymentGWInterface.queueUserRequest.enqueue(getSubInfoCmd);
-							        }else{
-							            offerRecord.skiped_first_recharge=1;
-							            UpdateOfferRecordCmd updateOfferCmd = new UpdateOfferRecordCmd(offerRecord, queueUpdateOfferRecordResp);
-							            rechargeEventRecord.status = 3;
-							            updateOfferRecord(updateOfferCmd);
-							            logInfo("Ignore first recharge event for "+offerRecord);
-							        }
-							    }
+							logInfo("Processing for: "+rechargeEventRecord);
+							if(offerRecord.process_date.before(rechargeEventRecord.date_time)){
+								offerRecord.rechargeEventRecord = rechargeEventRecord;
+								offerRecord.rechargeEventRecord.status = RechargeEventRecord.STATUS_CHARGE_FAILED; //default
+								if(listRequestProcessing.get(msisdn)==null){
+									listRequestProcessing.put(msisdn, offerRecord);
+									if( rechargeEventRecord.recharge_value==0){ // recharge value=0 mean this is new active sub. So we'll move old offer to bad debit
+										logger.Info("Got recharge event value=0,"+rechargeEventRecord);
+										processNewActiveSubs(offerRecord);
+									}else{
+										if(offerRecord.charge_status==OfferRecord.OFFER_CHARGE_STATUS_CONTINUE || offerRecord.skiped_first_recharge>0){
+											GetSubInfoCmd getSubInfoCmd=new GetSubInfoCmd();
+											getSubInfoCmd.msisdn = msisdn;
+											getSubInfoCmd.transactionId = connection.getChargingTransactionId();
+											getSubInfoCmd.reqDate = new Date(System.currentTimeMillis());
+											// getSubInfoCmd.rechargeMsisdn = batchRechargeCmd.currentBatchRechargeElement.recharge_msisdn;
+											getSubInfoCmd.token = GlobalVars.paymentGWInterface.CURRENT_TOKEN;
+											getSubInfoCmd.queueResp = queueGetSubInfoResp;
+											logInfo(getSubInfoCmd.getReqString());
+											chargingTps++; 
+											GlobalVars.paymentGWInterface.queueUserRequest.enqueue(getSubInfoCmd);
+										}else{
+											offerRecord.skiped_first_recharge=1;
+											UpdateOfferRecordCmd updateOfferCmd = new UpdateOfferRecordCmd(offerRecord, queueUpdateOfferRecordResp);
+											rechargeEventRecord.status = RechargeEventRecord.STATUS_SKIP_FIRST_CHARGE;
+											updateOfferRecord(updateOfferCmd);
+											logInfo("Ignore first recharge event for "+offerRecord);
+										}
+									}
+								}
+								else{
+									rechargeEventRecord.status = RechargeEventRecord.STATUS_UNBORROW;
+									finishProcessRechargeEventRecord(rechargeEventRecord);
+								}
 							}
 							else{
-								rechargeEventRecord.status = 3;
+								rechargeEventRecord.status = RechargeEventRecord.STATUS_UNBORROW;
 								finishProcessRechargeEventRecord(rechargeEventRecord);
 							}
 						}
 						else{
-							rechargeEventRecord.status = 3;
+							rechargeEventRecord.status = RechargeEventRecord.STATUS_UNBORROW;
 							finishProcessRechargeEventRecord(rechargeEventRecord);
 						}
 					} catch (SQLException e) {
@@ -230,7 +236,7 @@ public class ChargingProcess extends ProcessingThread {
 				}
 				else{
 				    logInfo("Already processing for msisd from "+rechargeEventRecord);
-					rechargeEventRecord.status = 3;
+					rechargeEventRecord.status = RechargeEventRecord.STATUS_UNBORROW;
 					finishProcessRechargeEventRecord(rechargeEventRecord);
 				}
 			}
@@ -286,14 +292,14 @@ public class ChargingProcess extends ProcessingThread {
         UpdateOfferRecordCmd updateOfferCmd = new UpdateOfferRecordCmd(offerRecord, queueUpdateOfferRecordResp);
         updateOfferRecord(updateOfferCmd);
         
-        
         ChargingCmd chargingCmd = new ChargingCmd(offerRecord);
         chargingCmd.chargeValue=0;
         chargingCmd.transactionID=0;
         chargingCmd.spID=Config.profileSubScriber_spID;
         chargingCmd.serviceID=Config.charging_serviceID;
         chargingCmd.charge_date=new Timestamp(System.currentTimeMillis());
-        chargingCmd.resultCode=155;
+        chargingCmd.paid_value=offerRecord.paid_value;
+        chargingCmd.resultCode=55;
         chargingCmd.resultString="The msisdn is re-actived to new owner";
         listChargeCmdProcessing.put(offerRecord.msisdn, chargingCmd);
         queueChargingCmdResp.enqueue(chargingCmd);
@@ -304,7 +310,9 @@ public class ChargingProcess extends ProcessingThread {
 		// TODO Auto-generated method stub
 	    chargingTps--; 
 		OfferRecord offerRecord = listRequestProcessing.get(getSubInfoCmdRep.msisdn);
-		if( getSubInfoCmdRep.resultCode==PaymentGWResultCode.RC_GET_SUBS_INFO_SUCCESS){ // check get subinfo ok
+		if( getSubInfoCmdRep.resultCode==PaymentGWResultCode.RC_GET_SUBS_INFO_SUCCESS
+				&& getSubInfoCmdRep.subId!=null && !getSubInfoCmdRep.subId.equals("") && !getSubInfoCmdRep.subId.equals("-1"))
+		{ // check get subinfo ok
 		    if(offerRecord.sub_id!=null && !offerRecord.sub_id.equals("") && !getSubInfoCmdRep.subId.equals(offerRecord.sub_id) ){
 		        logger.Info("The msisdn: "+offerRecord.msisdn+" has changed sub_id from "+offerRecord.sub_id+" to "+getSubInfoCmdRep.subId);
 		        offerRecord.sub_id=getSubInfoCmdRep.subId;
@@ -325,7 +333,8 @@ public class ChargingProcess extends ProcessingThread {
     		        chargingCmd.spID=Config.charging_spID;
     		        chargingCmd.serviceID=Config.charging_serviceID;
     		        chargingCmd.charge_date=new Timestamp(System.currentTimeMillis());
-    		        chargingCmd.resultCode=155;
+    		        chargingCmd.paid_value=offerRecord.paid_value;
+    		        chargingCmd.resultCode=ChargingCmd.RESULT_BALANCE_NOT_ENOUGH;
     		        chargingCmd.resultString="The chargeValue is < 0.";
     		        
     		        listChargeCmdProcessing.put(offerRecord.msisdn, chargingCmd);
@@ -367,20 +376,38 @@ public class ChargingProcess extends ProcessingThread {
                 chargingCmd.spID=Config.profileSubScriber_spID;
                 chargingCmd.serviceID=Config.charging_serviceID;
                 chargingCmd.charge_date=new Timestamp(System.currentTimeMillis());
-                chargingCmd.resultCode=155;
-                chargingCmd.resultString="The balance is not enough.";
+                chargingCmd.paid_value=offerRecord.paid_value;
+                chargingCmd.resultCode=ChargingCmd.RESULT_BALANCE_NOT_ENOUGH;
+                chargingCmd.resultString="Balance is not enough.";
                 
                 listChargeCmdProcessing.put(offerRecord.msisdn, chargingCmd);
                 queueChargingCmdResp.enqueue(chargingCmd);
 		    }
 		}else{
-			listRequestProcessing.remove(offerRecord.msisdn);
-			if( offerRecord.rechargeEventRecord != null){
-			    rechargeEventRecords.add(offerRecord.rechargeEventRecord);
-			}else{
-			    offerRecords.add(offerRecord);
+			
+			if(offerRecord.retry<2){
+				listRequestProcessing.remove(offerRecord.msisdn);
+				if(offerRecord.rechargeEventRecord != null){
+					rechargeEventRecords.add(offerRecord.rechargeEventRecord);
+				}else{
+					offerRecords.add(offerRecord);
+				}
+				logError("Putback to re-check getSubInfo later:"+getSubInfoCmdRep.getRespString()+"; retry:"+offerRecord.retry);
+				offerRecord.retry++;
 			}
-			logError("Putback to re-check getSubInfo later, msisdn:"+offerRecord.msisdn);
+			else{
+				ChargingCmd chargingCmd = new ChargingCmd(offerRecord);
+                chargingCmd.chargeValue =0;
+                chargingCmd.transactionID=0;
+                chargingCmd.spID=Config.profileSubScriber_spID;
+                chargingCmd.serviceID=Config.charging_serviceID;
+                chargingCmd.charge_date=new Timestamp(System.currentTimeMillis());
+                chargingCmd.paid_value=offerRecord.paid_value;
+                chargingCmd.resultCode=ChargingCmd.RESULT_GETSUBINFO_FAILED;
+                chargingCmd.resultString="Query subs info failed.";
+                listChargeCmdProcessing.put(offerRecord.msisdn, chargingCmd);
+                queueChargingCmdResp.enqueue(chargingCmd);
+			}
 		}
 	}
 
@@ -400,7 +427,6 @@ public class ChargingProcess extends ProcessingThread {
     				finishProcessRechargeEventRecord(rechargeEventRecord);
 				}
 			}
-			
 		}
 		else{
 			//re-insert when error
@@ -439,7 +465,15 @@ public class ChargingProcess extends ProcessingThread {
 		cdrRecord.paid_value_before=chargingCmdResp.paid_value;
 		cdrRecord.result_code = chargingCmdResp.resultCode;
 		cdrRecord.result_string = chargingCmdResp.resultString;
-		cdrRecord.status = chargingCmdResp.resultCode == ChargingCmd.RESULT_OK? CDRRecord.CHARGE_SUCCESS:CDRRecord.CHARGE_FAILED;
+		if(chargingCmdResp.resultCode == ChargingCmd.RESULT_OK){
+			cdrRecord.status = CDRRecord.CHARGE_SUCCESS;
+		}
+		else if(chargingCmdResp.resultCode == 55){
+			cdrRecord.status = CDRRecord.CHARGE_BAD_DEBIT;
+		}
+		else{
+			cdrRecord.status = CDRRecord.CHARGE_FAILED;
+		}
 		cdrRecord.spID=chargingCmdResp.spID;
 		cdrRecord.serviceID=chargingCmdResp.serviceID;
 		cdrRecord.transactionID=chargingCmdResp.transactionID;
@@ -478,17 +512,19 @@ public class ChargingProcess extends ProcessingThread {
 			
 			chargingCmdResp.offerRecord.last_charge_date = chargingCmdResp.charge_date;
 			if(chargingCmdResp.offerRecord.rechargeEventRecord !=null)
-			    chargingCmdResp.offerRecord.rechargeEventRecord.status = 2;
+			    chargingCmdResp.offerRecord.rechargeEventRecord.status = RechargeEventRecord.STATUS_CHARGE_SUCCESS;
 		}
 		
-		if(chargingCmdResp.resultCode == ChargingCmd.RESULT_OK||chargingCmdResp.resultCode==55){
+		if(chargingCmdResp.resultCode == ChargingCmd.RESULT_OK){
 			if(GlobalVars.isChargingError){
 				GlobalVars.isChargingError = false;
 				GlobalVars.lastTimeChargingError = System.currentTimeMillis();
 				connection.updateWarningChargingError(false);
 			}
 			
-		}else if(chargingCmdResp.resultCode!=155){
+		}else if(chargingCmdResp.resultCode!=ChargingCmd.RESULT_BAD_DEBIT 
+				&&chargingCmdResp.resultCode!=ChargingCmd.RESULT_BALANCE_NOT_ENOUGH
+				&&chargingCmdResp.resultCode!=ChargingCmd.RESULT_GETSUBINFO_FAILED){
 			if(GlobalVars.isChargingError == false){
 				GlobalVars.isChargingError = true;
 				GlobalVars.lastTimeChargingError = System.currentTimeMillis();

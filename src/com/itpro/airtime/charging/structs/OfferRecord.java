@@ -42,6 +42,7 @@ public class OfferRecord {
 	public int status; //'0-new, 1-waiting confirm, 2-success, 3-reject, 4-cancel, 5-expired',
 	public int charge_status; //0-for first charge, 1-continue charge, 2-charge done, 3-bad debt
 	public RechargeEventRecord rechargeEventRecord;
+	public int retry =0;
 	
 	public String toString(){
 		String result = "OfferRecord: ";
